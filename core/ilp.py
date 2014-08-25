@@ -5,10 +5,24 @@ import numpy
 
 # The ILP class can be used for basic interactions with ilp files.
 class ILP:
-    filePath = "Input Data/infos/lane0000/Raw Data/filePath"
-    axisorder = "Input Data/infos/lane0000/Raw Data/axisorder"
-    axistags = "Input Data/infos/lane0000/Raw Data/axistags"
-    xyzc_axistags = """{
+
+    #TODO: Change arguments so the static functions can be used with multiple lanes.
+
+    @staticmethod
+    def filepath():
+        return "Input Data/infos/lane0000/Raw Data/filePath"
+
+    @staticmethod
+    def axisorder():
+        return "Input Data/infos/lane0000/Raw Data/axisorder"
+
+    @staticmethod
+    def axistags():
+        return "Input Data/infos/lane0000/Raw Data/axistags"
+
+    @staticmethod
+    def xyzc_axistags():
+        return """{
 "axes": [
   {
     "key": "x",
@@ -43,13 +57,13 @@ class ILP:
         self.project_name = project_name
 
         # Read data from project file.
-        raw_path = vigra.readHDF5(self.project_name, ILP.filePath)
+        raw_path = vigra.readHDF5(self.project_name, ILP.filepath())
         raw_key = os.path.basename(raw_path)
         project_dir = os.path.dirname(os.path.realpath(self.project_name))
         raw_path = os.path.join(project_dir, raw_path[:-len(raw_key)-1])
         self.raw_path = raw_path
         self.raw_key = raw_key
-        self.raw_axisorder = vigra.readHDF5(self.project_name, ILP.axisorder)
+        self.raw_axisorder = vigra.readHDF5(self.project_name, ILP.axisorder())
 
         # Read number of channels from raw data.
         self.number_of_channels = 1
@@ -71,8 +85,8 @@ class ILP:
             raw = numpy.reshape(raw, raw.shape+(1,))
 
             # Update the project file.
-            vigra.writeHDF5("xyzc", self.project_name, ILP.axisorder)
-            vigra.writeHDF5(ILP.xyzc_axistags, self.project_name, ILP.axistags)
+            vigra.writeHDF5("xyzc", self.project_name, ILP.axisorder())
+            vigra.writeHDF5(ILP.xyzc_axistags(), self.project_name, ILP.axistags())
 
         # Copy the data.
         self.raw_path = self.raw_path[:-3] + file_suffix + ".h5"
@@ -81,7 +95,7 @@ class ILP:
         vigra.writeHDF5(raw, self.raw_path, self.raw_key, compression="lzf")
 
         # Update the project file.
-        vigra.writeHDF5(self.raw_path_key(), self.project_name, ILP.filePath)
+        vigra.writeHDF5(self.raw_path_key(), self.project_name, ILP.filepath())
 
     # Retrain using ilastik.
     def run_ilastik(self, probs_filename, delete_batch=False):
@@ -100,6 +114,14 @@ class ILP:
             del proj['Batch Inputs']
             del proj['Batch Prediction Output Locations']
             proj.close()
+
+            #TODO
+            # Remove the created memory holes in the h5 file
+            # (see "Deleting a dataset doesn't always reduce the file size" on
+            # https://github.com/h5py/h5py/wiki/Common-Problems).
+            # os.system("h5repack -i projectfile.h5 -o tempfile.h5")
+            # os.remove("projectfile.h5")
+            # os.rename("tempfile.h5", "projectfile.h5")
 
     # Merge probabilities into the raw data.
     def merge_probs_into_raw(self, probs_filename):

@@ -9,13 +9,13 @@ import os
 from shutil import copyfile
 from core.ilp import ILP
 
-# ----- Params -----
+#  ========  Params  ========
 ilastik_cmd = "/home/philip/inst/ilastik-1.1.1-Linux/run_ilastik.sh"
 project_name = "/home/philip/src/autocontext/data/test100.ilp"
 output_project_name = "/home/philip/src/autocontext/data/test100_output.ilp"
 probs_filename = "/home/philip/src/autocontext/data/test100_probs.h5"
-loop_runs = 4
-# ------------------
+loop_runs = 3
+#  ==========================
 
 
 # Copy the project file.
