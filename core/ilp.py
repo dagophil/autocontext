@@ -6,19 +6,36 @@ import numpy
 # The ILP class can be used for basic interactions with ilp files.
 class ILP:
 
-    #TODO: Change arguments so the static functions can be used with multiple lanes.
+    @staticmethod
+    def filepath(lane_number):
+        lane_number = str(lane_number).zfill(4)
+        return "Input Data/infos/lane" + lane_number + "/Raw Data/filePath"
 
     @staticmethod
-    def filepath():
-        return "Input Data/infos/lane0000/Raw Data/filePath"
+    def axisorder(lane_number):
+        lane_number = str(lane_number).zfill(4)
+        return "Input Data/infos/lane" + lane_number + "/Raw Data/axisorder"
 
     @staticmethod
-    def axisorder():
-        return "Input Data/infos/lane0000/Raw Data/axisorder"
+    def axistags(lane_number):
+        lane_number = str(lane_number).zfill(4)
+        return "Input Data/infos/lane" + lane_number + "/Raw Data/axistags"
 
     @staticmethod
-    def axistags():
-        return "Input Data/infos/lane0000/Raw Data/axistags"
+    def labelpath(lane_number, block_number):
+        lane_number = str(lane_number).zfill(3)
+        block_number = str(block_number).zfill(4)
+        return "PixelClassification/LabelSets/labels" + lane_number + "/block" + block_number
+
+    # Return the number of label blocks for the given lane.
+    @staticmethod
+    def number_label_blocks(project_name, lane_number):
+        lane_number = str(lane_number).zfill(3)
+        import h5py
+        proj = h5py.File(project_name, "r")
+        block_count = len(proj['PixelClassification']['LabelSets']['labels' + lane_number].keys())
+        proj.close()
+        return block_count
 
     @staticmethod
     def xyzc_axistags():
@@ -50,20 +67,23 @@ class ILP:
   }
 ]
 }"""
+
     export_key = "exported_data"
 
-    def __init__(self, ilastik_cmd, project_name):
+    def __init__(self, ilastik_cmd, project_name, lane_number=0):
         self.ilastik_cmd = ilastik_cmd
         self.project_name = project_name
+        self.lane_number = lane_number
 
         # Read data from project file.
-        raw_path = vigra.readHDF5(self.project_name, ILP.filepath())
+        raw_path = vigra.readHDF5(self.project_name, ILP.filepath(self.lane_number))
         raw_key = os.path.basename(raw_path)
         project_dir = os.path.dirname(os.path.realpath(self.project_name))
         raw_path = os.path.join(project_dir, raw_path[:-len(raw_key)-1])
         self.raw_path = raw_path
         self.raw_key = raw_key
-        self.raw_axisorder = vigra.readHDF5(self.project_name, ILP.axisorder())
+        self.raw_axisorder = vigra.readHDF5(self.project_name, ILP.axisorder(self.lane_number))
+        self.number_label_blocks = ILP.number_label_blocks(self.project_name, self.lane_number)
 
         # Read number of channels from raw data.
         self.number_of_channels = 1
@@ -85,8 +105,8 @@ class ILP:
             raw = numpy.reshape(raw, raw.shape+(1,))
 
             # Update the project file.
-            vigra.writeHDF5("xyzc", self.project_name, ILP.axisorder())
-            vigra.writeHDF5(ILP.xyzc_axistags(), self.project_name, ILP.axistags())
+            vigra.writeHDF5("xyzc", self.project_name, ILP.axisorder(self.lane_number))
+            vigra.writeHDF5(ILP.xyzc_axistags(), self.project_name, ILP.axistags(self.lane_number))
 
         # Copy the data.
         self.raw_path = self.raw_path[:-3] + file_suffix + ".h5"
@@ -95,9 +115,9 @@ class ILP:
         vigra.writeHDF5(raw, self.raw_path, self.raw_key, compression="lzf")
 
         # Update the project file.
-        vigra.writeHDF5(self.raw_path_key(), self.project_name, ILP.filepath())
+        vigra.writeHDF5(self.raw_path_key(), self.project_name, ILP.filepath(self.lane_number))
 
-    # Retrain using ilastik.
+    # Retrain the project using ilastik.
     def run_ilastik(self, probs_filename, delete_batch=False):
         # Run ilastik.
         if os.path.isfile(probs_filename):
