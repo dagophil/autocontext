@@ -195,15 +195,10 @@ class ILP:
         proj = File(self.project_name, "r")
         for i in range(self.number_label_blocks):
             block = vigra.readHDF5(self.project_name, ILP.label_block_path(self.lane_number, i))
-
-            #TODO:
-            # Somehow make this path accessible as static method, so when the paths change,
-            # only the static method must be changed.
-            #block_slice = proj['PixelClassification']['LabelSets']['labels']
-
-
-            print ""
+            block_slice = move_into_dict(proj, ILP.label_block_path_list(self.lane_number, i)).attrs['blockSlice']
+            blocks.append((block, block_slice))
         proj.close()
+        return blocks
 
     # Retrain the project using ilastik.
     def run_ilastik(self, probs_filename, delete_batch=False):
