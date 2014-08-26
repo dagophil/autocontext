@@ -3,29 +3,63 @@ import vigra
 import numpy
 
 
+# Recursively applies the keys in key_list into the dict.
+# Example: key_list = ["key1", "key2"] --> return d["key1"]["key2"]
+def move_into_dict(d, key_list):
+    val = d
+    for key in key_list:
+        val = val[key]
+    return val
+
+
 # The ILP class can be used for basic interactions with ilp files.
 class ILP:
 
     @staticmethod
     def filepath(lane_number):
+        return "/".join(ILP.filepath_list(lane_number))
+
+    @staticmethod
+    def filepath_list(lane_number):
         lane_number = str(lane_number).zfill(4)
-        return "Input Data/infos/lane" + lane_number + "/Raw Data/filePath"
+        return ["Input Data", "infos", "lane" + lane_number, "Raw Data", "filePath"]
 
     @staticmethod
     def axisorder(lane_number):
+        return "/".join(ILP.axisorder_list(lane_number))
+
+    @staticmethod
+    def axisorder_list(lane_number):
         lane_number = str(lane_number).zfill(4)
-        return "Input Data/infos/lane" + lane_number + "/Raw Data/axisorder"
+        return ["Input Data", "infos", "lane" + lane_number, "Raw Data", "axisorder"]
 
     @staticmethod
     def axistags(lane_number):
-        lane_number = str(lane_number).zfill(4)
-        return "Input Data/infos/lane" + lane_number + "/Raw Data/axistags"
+        return "/".join(ILP.axistags_list(lane_number))
 
     @staticmethod
-    def labelpath(lane_number, block_number):
+    def axistags_list(lane_number):
+        lane_number = str(lane_number).zfill(4)
+        return ["Input Data", "infos", "lane" + lane_number, "Raw Data", "axistags"]
+
+    @staticmethod
+    def label_path(lane_number):
+        return "/".join(ILP.label_path_list(lane_number))
+
+    @staticmethod
+    def label_path_list(lane_number):
+        lane_number = str(lane_number).zfill(3)
+        return ["PixelClassification", "LabelSets", "labels" + lane_number]
+
+    @staticmethod
+    def label_block_path(lane_number, block_number):
+        return "/".join(ILP.label_block_path_list(lane_number, block_number))
+
+    @staticmethod
+    def label_block_path_list(lane_number, block_number):
         lane_number = str(lane_number).zfill(3)
         block_number = str(block_number).zfill(4)
-        return "PixelClassification/LabelSets/labels" + lane_number + "/block" + block_number
+        return ["PixelClassification", "LabelSets", "labels" + lane_number, "block" + block_number]
 
     @staticmethod
     def xyzc_axistags():
@@ -75,10 +109,9 @@ class ILP:
         self._raw_axisorder = vigra.readHDF5(project_name, ILP.axisorder(lane_number))
 
         # Get the number of label blocks.
-        s_lane_number = str(lane_number).zfill(3)
         from h5py import File
         proj = File(project_name, "r")
-        block_count = len(proj['PixelClassification']['LabelSets']['labels' + s_lane_number].keys())
+        block_count = len(move_into_dict(proj, ILP.label_path_list(lane_number)).keys())
         proj.close()
         self._number_label_blocks = block_count
 
@@ -155,6 +188,23 @@ class ILP:
         # Update the project file.
         vigra.writeHDF5(self.raw_path_key, self.project_name, ILP.filepath(self.lane_number))
 
+    # Returns a list with all label blocks. The list contains 2-tuples (block, blockSlice).
+    def extract_label_blocks(self):
+        blocks = []
+        from h5py import File
+        proj = File(self.project_name, "r")
+        for i in range(self.number_label_blocks):
+            block = vigra.readHDF5(self.project_name, ILP.label_block_path(self.lane_number, i))
+
+            #TODO:
+            # Somehow make this path accessible as static method, so when the paths change,
+            # only the static method must be changed.
+            #block_slice = proj['PixelClassification']['LabelSets']['labels']
+
+
+            print ""
+        proj.close()
+
     # Retrain the project using ilastik.
     def run_ilastik(self, probs_filename, delete_batch=False):
         # Run ilastik.
@@ -173,7 +223,7 @@ class ILP:
             del proj['Batch Prediction Output Locations']
             proj.close()
 
-            #TODO
+            #TODO:
             # Remove the created memory holes in the h5 file
             # (see "Deleting a dataset doesn't always reduce the file size" on
             # https://github.com/h5py/h5py/wiki/Common-Problems).
