@@ -16,7 +16,7 @@ def move_into_dict(d, key_list):
 
 
 # The ILP class can be used for basic interactions with ilp files.
-class ILP:
+class ILP(object):
 
     @staticmethod
     def filepath(lane_number):
@@ -208,27 +208,28 @@ class ILP:
 
     # Returns a list with all label blocks. The list contains 2-tuples (block, blockSlice).
     def extract_label_blocks(self):
-        blocks = []
+        # Read the label blocks.
+        blocks = [vigra.readHDF5(self.project_name, ILP.label_block_path(self.lane_number, i))
+                  for i in range(self.number_label_blocks)]
+
+        # Read the block slices.
         from h5py import File
         proj = File(self.project_name, "r")
-        for i in range(self.number_label_blocks):
-            block = vigra.readHDF5(self.project_name, ILP.label_block_path(self.lane_number, i))
-            block_slice = move_into_dict(proj, ILP.label_block_path_list(self.lane_number, i)).attrs['blockSlice']
-            blocks.append((block, block_slice))
+        block_slices = [move_into_dict(proj, ILP.label_block_path_list(self.lane_number, i)).attrs['blockSlice']
+                        for i in range(self.number_label_blocks)]
         proj.close()
-        return blocks
+        return blocks, block_slices
 
     # Replace the label blocks with the given ones.
-    def replace_label_blocks(self, blocks):
+    def replace_label_blocks(self, blocks, block_slices):
         assert len(blocks) == self.number_label_blocks,\
             "Wrong number of blocks to be inserted."
 
         from h5py import File
         proj = File(self.project_name, "r+")
         for i in range(self.number_label_blocks):
-            block, block_slice = blocks[i]
-            vigra.writeHDF5(block, self.project_name, ILP.label_block_path(self.lane_number, i))
-            move_into_dict(proj, ILP.label_block_path_list(self.lane_number, i)).attrs['blockSlice'] = block_slice
+            vigra.writeHDF5(blocks[i], self.project_name, ILP.label_block_path(self.lane_number, i))
+            move_into_dict(proj, ILP.label_block_path_list(self.lane_number, i)).attrs['blockSlice'] = block_slices[i]
         proj.close()
 
     # Retrain the project using ilastik.

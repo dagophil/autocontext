@@ -33,7 +33,7 @@ proj = ILP(ilastik_cmd, output_project_name)
 proj.copy_raw_data_multichannel()
 
 # Extract the labels.
-blocks, block_slices = zip(*proj.extract_label_blocks())
+blocks, block_slices = proj.extract_label_blocks()
 labels = proj.label_names
 
 # Split the labels in parts.
@@ -43,7 +43,7 @@ split_blocks = scatter_labels(blocks, len(labels), loop_runs)
 for i in range(loop_runs):
     # Insert the subset of the labels into the project.
     blocks = split_blocks[i]
-    proj.replace_label_blocks(zip(*[blocks, block_slices]))
+    proj.replace_label_blocks(blocks, block_slices)
 
     # Run ilastik.
     proj.run_ilastik(probs_filename, delete_batch=True)
