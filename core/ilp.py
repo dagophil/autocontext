@@ -121,7 +121,7 @@ class ILP:
         self._raw_axisorder = vigra.readHDF5(project_name, ILP.axisorder(lane_number))
 
         # Get the labels and the number of label blocks.
-        self._labels = vigra.readHDF5(project_name, ILP.label_names_path())
+        self._label_names = vigra.readHDF5(project_name, ILP.label_names_path())
         from h5py import File
         proj = File(project_name, "r")
         block_count = len(move_into_dict(proj, ILP.label_path_list(lane_number)).keys())
@@ -162,8 +162,8 @@ class ILP:
 
     # Getter for labels.
     @property
-    def labels(self):
-        return self._labels
+    def label_names(self):
+        return self._label_names
 
     # Getter for number label blocks.
     @property

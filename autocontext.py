@@ -34,7 +34,7 @@ proj.copy_raw_data_multichannel()
 
 # Extract the labels.
 blocks, block_slices = zip(*proj.extract_label_blocks())
-labels = proj.labels
+labels = proj.label_names
 
 # Split the labels in parts.
 split_blocks = scatter_labels(blocks, len(labels), loop_runs)
