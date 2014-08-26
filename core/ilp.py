@@ -218,6 +218,19 @@ class ILP:
         proj.close()
         return blocks
 
+    # Replace the label blocks with the given ones.
+    def replace_label_blocks(self, blocks):
+        assert len(blocks) == self.number_label_blocks,\
+            "Wrong number of blocks to be inserted."
+
+        from h5py import File
+        proj = File(self.project_name, "r+")
+        for i in range(self.number_label_blocks):
+            block, block_slice = blocks[i]
+            vigra.writeHDF5(block, self.project_name, ILP.label_block_path(self.lane_number, i))
+            move_into_dict(proj, ILP.label_block_path_list(self.lane_number, i)).attrs['blockSlice'] = block_slice
+        proj.close()
+
     # Retrain the project using ilastik.
     def run_ilastik(self, probs_filename, delete_batch=False):
         # Run ilastik.
@@ -236,7 +249,7 @@ class ILP:
             del proj['Batch Prediction Output Locations']
             proj.close()
 
-            #TODO:
+            # TODO:
             # Remove the created memory holes in the h5 file
             # (see "Deleting a dataset doesn't always reduce the file size" on
             # https://github.com/h5py/h5py/wiki/Common-Problems).
