@@ -1,3 +1,6 @@
+# ilp.py
+#
+# Provides basic interactions with ilp files.
 import os
 import vigra
 import numpy
@@ -41,6 +44,14 @@ class ILP:
     def axistags_list(lane_number):
         lane_number = str(lane_number).zfill(4)
         return ["Input Data", "infos", "lane" + lane_number, "Raw Data", "axistags"]
+
+    @staticmethod
+    def label_names_path():
+        return "/".join(ILP.label_names_path_list())
+
+    @staticmethod
+    def label_names_path_list():
+        return ["PixelClassification", "LabelNames"]
 
     @staticmethod
     def label_path(lane_number):
@@ -94,6 +105,7 @@ class ILP:
 
     export_key = "exported_data"
 
+    # The constructor extracts the basic information from the ilp file.
     def __init__(self, ilastik_cmd, project_name, lane_number=0):
         self.ilastik_cmd = ilastik_cmd
         self._project_name = project_name
@@ -108,7 +120,8 @@ class ILP:
         self._raw_key = raw_key
         self._raw_axisorder = vigra.readHDF5(project_name, ILP.axisorder(lane_number))
 
-        # Get the number of label blocks.
+        # Get the labels and the number of label blocks.
+        self._labels = vigra.readHDF5(project_name, ILP.label_names_path())
         from h5py import File
         proj = File(project_name, "r")
         block_count = len(move_into_dict(proj, ILP.label_path_list(lane_number)).keys())
@@ -146,6 +159,11 @@ class ILP:
     @property
     def raw_axisorder(self):
         return self._raw_axisorder
+
+    # Getter for labels.
+    @property
+    def labels(self):
+        return self._labels
 
     # Getter for number label blocks.
     @property
