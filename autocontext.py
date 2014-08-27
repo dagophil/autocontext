@@ -29,8 +29,8 @@ copyfile(project_name, output_project_name)
 # Create an ILP object for the project.
 proj = ILP(ilastik_cmd, output_project_name)
 
-# Copy the raw data and reshape it to xyzc.
-proj.copy_raw_data_multichannel()
+# Copy the raw data and reshape it to txyzc.
+proj.copy_raw_data_txyzc()
 
 # Extract the labels.
 blocks, block_slices = proj.extract_label_blocks()
