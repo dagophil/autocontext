@@ -143,8 +143,7 @@ class ILP(object):
     export_key = "exported_data"
 
     # The constructor extracts the basic information from the ilp file.
-    def __init__(self, ilastik_cmd, project_name, lane_number=0):
-        self.ilastik_cmd = ilastik_cmd
+    def __init__(self, project_name, lane_number=0):
         self._project_name = project_name
         self._lane_number = lane_number
 
@@ -318,12 +317,12 @@ class ILP(object):
         proj.close()
 
     # Retrain the project using ilastik.
-    def run_ilastik(self, probs_filename, delete_batch=False):
+    def run_ilastik(self, ilastik_cmd, probs_filename, delete_batch=False):
         # Run ilastik.
         if os.path.isfile(probs_filename):
             os.remove(probs_filename)
         cmd = '{} --headless --project {} --output_format hdf5 --output_filename_format {} {} --retrain'\
-            .format(self.ilastik_cmd, self.project_name, probs_filename, self.raw_path_key)
+            .format(ilastik_cmd, self.project_name, probs_filename, self.raw_path_key)
         os.system(cmd)
 
         # Remove batch entries from project file.

@@ -27,7 +27,7 @@ if os.path.isfile(output_project_name):
 copyfile(project_name, output_project_name)
 
 # Create an ILP object for the project.
-proj = ILP(ilastik_cmd, output_project_name)
+proj = ILP(output_project_name)
 
 # Copy the raw data and reshape it to txyzc.
 proj.copy_raw_data_txyzc()
@@ -46,7 +46,7 @@ for i in range(loop_runs):
     proj.replace_label_blocks(blocks, block_slices)
 
     # Run ilastik.
-    proj.run_ilastik(probs_filename, delete_batch=True)
+    proj.run_ilastik(ilastik_cmd, probs_filename, delete_batch=True)
 
     # Merge the probabilities into the raw data.
     proj.merge_probs_into_raw(probs_filename)
