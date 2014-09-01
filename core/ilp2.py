@@ -55,7 +55,7 @@ def reshape_txyzc(data):
 
 # TODO:
 # Use joblib to cache the accesses of the h5 project file.
-#  https://pythonhosted.org/joblib/memory.html
+# https://pythonhosted.org/joblib/memory.html
 class ILP(object):
     """Provides basic interactions with ilp files.
     """
@@ -103,10 +103,10 @@ class ILP(object):
         return data_count
 
     def get_data_path(self, data_nr):
-        """Returns the file path to the dataset.
+        """Returns the file path of the dataset.
 
         :param data_nr: number of dataset
-        :return: file path to the dataset
+        :return: file path of the dataset
         """
         h5_key = const.filepath(data_nr)
         data_path = vigra.readHDF5(self.project_filename, h5_key)
@@ -115,7 +115,7 @@ class ILP(object):
         return data_path
 
     def get_data_key(self, data_nr):
-        """Returns the h5 key of some dataset.
+        """Returns the h5 key of the dataset.
 
         :param data_nr: number of dataset
         :return: key of the dataset inside its h5 file
@@ -133,13 +133,15 @@ class ILP(object):
         """
         return vigra.readHDF5(self.get_data_path(data_nr), self.get_data_key(data_nr))
 
-    # TODO: Implement this function.
     def get_output_data_path(self, data_nr):
-        """
+        """Returns the file path to the probability data of the dataset.
 
-        :param data_nr:
-        :return:
+        :param data_nr: number of dataset
+        :return: file path to probability data of the dataset
         """
+        data_path = self.get_data_path(data_nr)
+        filename, ext = os.path.splitext(os.path.basename(data_path))
+        return filename + "_probs" + ext
 
     def get_axisorder(self, data_nr):
         """Returns the axisorder of the dataset.
@@ -177,7 +179,7 @@ class ILP(object):
         return block_count
 
     def get_labels(self, data_nr):
-        """Returns the labels and their block slices of some dataset.
+        """Returns the labels and their block slices of the dataset.
 
         :param data_nr: number of dataset
         :return: labels and blockslices of the dataset
@@ -195,7 +197,7 @@ class ILP(object):
         return blocks, block_slices
 
     def replace_labels(self, data_nr, blocks, block_slices):
-        """Replaces the labels and their block slices of some dataset.
+        """Replaces the labels and their block slices of the dataset.
 
         :param data_nr: number of dataset
         :param blocks: label blocks
@@ -231,6 +233,8 @@ class ILP(object):
             if not hasattr(data, "axistags"):
                 data = vigra.VigraArray(data, axistags=vigra.defaultAxistags(axisorder))
             new_data = reshape_txyzc(data)
+
+            print self.get_output_data_path(data_nr)
 
             # TODO:
             # Save new_data in the output folder.
