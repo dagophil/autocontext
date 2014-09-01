@@ -20,8 +20,8 @@ def eval_h5(proj, key_list):
     return val
 
 
-def reshape_txyzc(data):
-    """Reshape data to txyzc and set proper axistags.
+def reshape_tzyxc(data):
+    """Reshape data to tzyxc axisorder and set proper axistags.
 
     :param data: dataset to be reshaped
     :type data: vigra or numpy array
@@ -34,13 +34,13 @@ def reshape_txyzc(data):
 
     # Get the axes that have to be added to the dataset.
     axes = {"t": vigra.AxisInfo.t,
-            "x": vigra.AxisInfo.x,
-            "y": vigra.AxisInfo.y,
             "z": vigra.AxisInfo.z,
+            "y": vigra.AxisInfo.y,
+            "x": vigra.AxisInfo.x,
             "c": vigra.AxisInfo.c}
     for axis in axistags:
         assert isinstance(axis, vigra.AxisInfo)
-        axes.pop(axis.key, None)  # Remove ax from the dict.
+        axes.pop(axis.key, None)
 
     # Add the axes and create the new shape.
     data_shape = list(data.shape)
@@ -59,6 +59,14 @@ def reshape_txyzc(data):
 class ILP(object):
     """Provides basic interactions with ilp files.
     """
+
+    def __init__(self, project_filename, output_folder):
+        self._project_filename = project_filename
+        self._cache_folder = output_folder
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+        # TODO:
+        # Maybe check if the project exists and can be opened.
 
     @property
     def project_filename(self):
@@ -84,16 +92,10 @@ class ILP(object):
         """
         return self._cache_folder
 
-    def __init__(self, project_filename, output_folder):
-        self._project_filename = project_filename
-        self._cache_folder = output_folder
-        if not os.path.exists(output_folder):
-            os.makedirs(output_folder)
-        # TODO:
-        # Maybe check if the project exists and can be opened.
-
-    def get_data_count(self):
+    @property
+    def data_count(self):
         """Returns the number of datasets inside the project file.
+
         :return: number of datasets
         """
         proj = h5py.File(self.project_filename, "r")
@@ -125,6 +127,17 @@ class ILP(object):
         data_key = os.path.basename(data_path)
         return data_key
 
+    def set_data_path_key(self, data_nr, new_path, new_key):
+        """Sets file path and h5 key of the dataset.
+
+        :param data_nr: number of dataset
+        :param new_path: new file path
+        :param new_key: new h5 key
+        """
+        rel_path = os.path.relpath(os.path.abspath(new_path), self.project_dir) + "/" + new_key
+        h5_key = const.filepath(data_nr)
+        vigra.writeHDF5(rel_path, self.project_filename, h5_key)
+
     def get_data(self, data_nr):
         """Returns the dataset.
 
@@ -141,7 +154,7 @@ class ILP(object):
         """
         data_path = self.get_data_path(data_nr)
         filename, ext = os.path.splitext(os.path.basename(data_path))
-        return filename + "_probs" + ext
+        return os.path.join(self.cache_folder, filename + "_probs" + ext)
 
     def get_axisorder(self, data_nr):
         """Returns the axisorder of the dataset.
@@ -150,6 +163,53 @@ class ILP(object):
         :return: axisorder of dataset
         """
         return vigra.readHDF5(self.project_filename, const.axisorder(data_nr))
+
+    def set_axisorder(self, data_nr, new_axisorder):
+        """Sets the axisorder of the dataset.
+
+        :param data_nr: number of dataset
+        :param new_axisorder: new axisorder of dataset
+        """
+        h5_key = const.axisorder(data_nr)
+        vigra.writeHDF5(new_axisorder, self.project_filename, h5_key)
+
+    def get_axistags(self, data_nr):
+        """Returns the axistags of the dataset as they are in the project file.
+
+        :param data_nr: number of dataset
+        :return: axistags of dataset
+        """
+        return vigra.readHDF5(self.project_filename, const.axistags(data_nr))
+
+    def set_axistags(self, data_nr, new_axistags):
+        """Sets the axistags of the dataset (only in the project file, not in the dataset itself).
+
+        :param data_nr: number of dataset
+        :param new_axistags: new axistags of dataset
+        """
+        h5_key = const.axistags(data_nr)
+        vigra.writeHDF5(new_axistags, self.project_filename, h5_key)
+
+    def _get_axistags_from_data(self, data_nr):
+        """Returns the axistags of the dataset.
+
+        :param data_nr: number of dataset
+        :return: axistags
+        """
+        data_path = self.get_data_path(data_nr)
+        data_key = self.get_data_key(data_nr)
+        data = h5py.File(data_path)
+        tags = data[data_key].attrs['axistags']
+        data.close()
+        return tags
+
+    def _set_axistags_from_data(self, data_nr):
+        """Reads the axistags from the raw data and writes them into the project file.
+
+        :param data_nr: number of dataset
+        """
+        data_axistags = self._get_axistags_from_data(data_nr)
+        self.set_axistags(data_nr, data_axistags);
 
     @staticmethod
     def _h5_labels(proj, data_nr):
@@ -216,30 +276,36 @@ class ILP(object):
         proj.close()
 
     # TODO: Update docstring (return).
-    def extend_data_txyzc(self, data_nr=None):
-        """Extend the dimension of some dataset and its labels to txyzc.
+    def extend_data_tzyxc(self, data_nr=None):
+        """Extend the dimension of some dataset and its labels to tzyxc.
 
         If data_nr is None, all datasets are extended.
         :param data_nr: number of dataset
         :return:
         """
         if data_nr is None:
-            for i in range(self.get_data_count()):
-                self.extend_data_txyzc(i)
+            for i in range(self.data_count):
+                self.extend_data_tzyxc(i)
         else:
             # Reshape the data with the correct axistags.
             data = self.get_data(data_nr)
             axisorder = self.get_axisorder(data_nr)
             if not hasattr(data, "axistags"):
-                data = vigra.VigraArray(data, axistags=vigra.defaultAxistags(axisorder))
-            new_data = reshape_txyzc(data)
+                data = vigra.VigraArray(data, axistags=vigra.defaultAxistags(axisorder), dtype=data.dtype)
+            new_data = reshape_tzyxc(data)
 
-            print self.get_output_data_path(data_nr)
+            # Save the reshaped dataset.
+            output_path = self.get_output_data_path(data_nr)
+            output_key = self.get_data_key(data_nr)
+            vigra.writeHDF5(new_data, output_path, output_key)
+
+            # Update the project file.
+            self.set_data_path_key(data_nr, output_path, output_key)
+            self.set_axisorder(data_nr, "tzyxc")
+            self._set_axistags_from_data(data_nr)
 
             # TODO:
-            # Save new_data in the output folder.
-            # Update the project file: Use new_data, set axisorder, set axistags.
-            # Reshape the labels to txyzc and update label's blockSlices attribute.
+            # Reshape the labels to tzyxc and update label's blockSlices attribute.
 
     # TODO: Implement this function.
     def retrain(self, ilastik_cmd):
@@ -248,7 +314,7 @@ class ILP(object):
         :param ilastik_cmd: path to the file run_ilastik.sh
         :return:
         """
-        return
+        raise NotImplementedError
 
     # TODO: Implement this function.
     def merge_probs_into_raw(self, data_nr, probs_filename=None):
@@ -259,4 +325,4 @@ class ILP(object):
         :param probs_filename:
         :return:
         """
-        return
+        raise NotImplementedError
