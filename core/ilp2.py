@@ -261,7 +261,6 @@ class ILP(object):
     def label_names(self):
         """Returns the names of the labels of the dataset.
 
-        :param data_nr: number of dataset
         :return: names of the labels of the dataset
         """
         return vigra.readHDF5(self.project_filename, const.label_names())
