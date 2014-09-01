@@ -1,17 +1,23 @@
-# labels.py
-#
-# Functions to modify labels.
 import numpy
 import math
 import random
 
 
-# Randomly scatter the labels of a single label block into several layers.
 def scatter_labels_single_block(label_block, label_count, n):
+    """Creates n blocks of the same size as label_block, where each block contains a subset of the original labels.
+
+    The new blocks are a decomposition of the original block, meaning that they are pairwise disjoint and form the
+    original block when merged.
+    :param label_block: label block
+    :param label_count: number of labels inside the block
+    :param n: number of blocks
+    :return: list label blocks, where each block contains a subset of the original labels
+    """
     # Find the label coordinates inside the block.
     wh_list = [numpy.where(label_block == i+1) for i in range(label_count)]
     available_list = [range(len(wh[0])) for wh in wh_list]
 
+    # Spread the labels.
     scatter_blocks = []
     for k in range(n):
         block = numpy.zeros(label_block.shape, dtype=label_block.dtype)
@@ -31,14 +37,15 @@ def scatter_labels_single_block(label_block, label_count, n):
     return scatter_blocks
 
 
-# Randomly scatter the labels of label blocks into several layers.
-# label_blocks: List of label blocks.
-# n: Number of splits.
-#
-# Returns:
-# List, where each item is of the same format as label_blocks,
-# containing only an n-th of the original labels.
 def scatter_labels(label_blocks, label_count, n):
+    """Spread the labels of the given label blocks into several layers.
+
+    :param label_blocks: list of label blocks
+    :param label_count: number of labels
+    :param n: number of layers
+    :return: list of length n, where each item is a list of label blocks of the original size,
+             but containing only a subset of the original labels
+    """
     return_list = [[] for __ in range(n)]
     for block in label_blocks:
         scatter_blocks = scatter_labels_single_block(block, label_count, n)
