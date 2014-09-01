@@ -8,9 +8,9 @@ def eval_h5(proj, key_list):
     """Recursively apply the keys in key_list to proj.
 
     Example: If key_list is ["key1", "key2"], then proj["key1"]["key2"] is returned.
-    :param proj: h5py File object.
-    :param key_list: List of keys to be applied to proj.
-    :return: Entry of the last dict after all keys have been applied.
+    :param proj: h5py File object
+    :param key_list: list of keys to be applied to proj
+    :return: entry of the last dict after all keys have been applied
     """
     if not isinstance(proj, h5py.File):
         raise Exception("A valid h5py File object must be given.")
@@ -21,7 +21,12 @@ def eval_h5(proj, key_list):
 
 
 def reshape_txyzc(data):
-    """Reshape data to txyzc and set proper axistags."""
+    """Reshape data to txyzc and set proper axistags.
+
+    :param data: dataset to be reshaped
+    :type data: vigra or numpy array
+    :return: reshaped dataset
+    """
     if not hasattr(data, "axistags"):
         axistags = vigra.defaultAxistags(len(data.shape))
     else:
@@ -57,15 +62,26 @@ class ILP(object):
 
     @property
     def project_filename(self):
+        """Returns filename of the ilp project.
+
+        :return: filename of the ilp project
+        """
         return self._project_filename
 
     @property
     def project_dir(self):
-        """Returns directory path of the project file."""
+        """Returns directory path of the project file.
+
+        :return: directory path of project file
+        """
         return os.path.dirname(os.path.realpath(self.project_filename))
 
     @property
     def cache_folder(self):
+        """Returns path of the cache folder.
+
+        :return: path of the cache folder
+        """
         return self._cache_folder
 
     def __init__(self, project_filename, output_folder):
@@ -77,7 +93,9 @@ class ILP(object):
         # Maybe check if the project exists and can be opened.
 
     def get_data_count(self):
-        """Return the number of datasets inside the project file."""
+        """Returns the number of datasets inside the project file.
+        :return: number of datasets
+        """
         proj = h5py.File(self.project_filename, "r")
         input_infos = eval_h5(proj, const.input_infos_list())
         data_count = len(input_infos.keys())
@@ -85,7 +103,11 @@ class ILP(object):
         return data_count
 
     def get_data_path(self, data_nr):
-        """Return the file path to the dataset."""
+        """Returns the file path to the dataset.
+
+        :param data_nr: number of dataset
+        :return: file path to the dataset
+        """
         h5_key = const.filepath(data_nr)
         data_path = vigra.readHDF5(self.project_filename, h5_key)
         data_key = os.path.basename(data_path)
@@ -93,23 +115,49 @@ class ILP(object):
         return data_path
 
     def get_data_key(self, data_nr):
-        """Return the h5 key of some dataset."""
+        """Returns the h5 key of some dataset.
+
+        :param data_nr: number of dataset
+        :return: key of the dataset inside its h5 file
+        """
         h5_key = const.filepath(data_nr)
         data_path = vigra.readHDF5(self.project_filename, h5_key)
         data_key = os.path.basename(data_path)
         return data_key
 
     def get_data(self, data_nr):
-        """Return some dataset."""
+        """Returns the dataset.
+
+        :param data_nr: number of dataset
+        :return: the dataset
+        """
         return vigra.readHDF5(self.get_data_path(data_nr), self.get_data_key(data_nr))
 
+    # TODO: Implement this function.
+    def get_output_data_path(self, data_nr):
+        """
+
+        :param data_nr:
+        :return:
+        """
+
     def get_axisorder(self, data_nr):
-        """Return the axisorder of the dataset."""
+        """Returns the axisorder of the dataset.
+
+        :param data_nr: number of dataset
+        :return: axisorder of dataset
+        """
         return vigra.readHDF5(self.project_filename, const.axisorder(data_nr))
 
     @staticmethod
     def _h5_labels(proj, data_nr):
-        """Return the h5py object that holds the label blocks."""
+        """Returns the h5py object that holds the label blocks.
+
+        :param proj: the ilp project file
+        :type proj: h5py.File
+        :param data_nr: number of dataset
+        :return: labels of the dataset as h5py object
+        """
         if not isinstance(proj, h5py.File):
             raise Exception("A valid h5py File object must be given.")
         data_nr = str(data_nr).zfill(3)
@@ -117,7 +165,11 @@ class ILP(object):
         return eval_h5(proj, h5_key)
 
     def _label_block_count(self, data_nr):
-        """Return the number of label blocks of the dataset."""
+        """Returns the number of label blocks of the dataset.
+
+        :param data_nr: number of dataset
+        :return: number of label blocks of the dataset
+        """
         proj = h5py.File(self.project_filename, "r")
         labels = ILP._h5_labels(proj, data_nr)
         block_count = len(labels.keys())
@@ -125,7 +177,11 @@ class ILP(object):
         return block_count
 
     def get_labels(self, data_nr):
-        """Return the labels of some dataset."""
+        """Returns the labels and their block slices of some dataset.
+
+        :param data_nr: number of dataset
+        :return: labels and blockslices of the dataset
+        """
         # Read the label blocks.
         block_count = self._label_block_count(data_nr)
         blocks = [vigra.readHDF5(self.project_filename, const.label_blocks(data_nr, i))
@@ -139,7 +195,12 @@ class ILP(object):
         return blocks, block_slices
 
     def replace_labels(self, data_nr, blocks, block_slices):
-        """Replace the labels of some dataset."""
+        """Replaces the labels and their block slices of some dataset.
+
+        :param data_nr: number of dataset
+        :param blocks: label blocks
+        :param block_slices: block slices
+        """
         if len(blocks) != self._label_block_count(data_nr):
             raise Exception("Wrong number of label blocks to be inserted.")
         if len(block_slices) != self._label_block_count(data_nr):
@@ -152,10 +213,13 @@ class ILP(object):
             h5_blocks.attrs['blockSlice'] = block_slices[i]
         proj.close()
 
+    # TODO: Update docstring (return).
     def extend_data_txyzc(self, data_nr=None):
         """Extend the dimension of some dataset and its labels to txyzc.
 
         If data_nr is None, all datasets are extended.
+        :param data_nr: number of dataset
+        :return:
         """
         if data_nr is None:
             for i in range(self.get_data_count()):
@@ -173,15 +237,22 @@ class ILP(object):
             # Update the project file: Use new_data, set axisorder, set axistags.
             # Reshape the labels to txyzc and update label's blockSlices attribute.
 
-
-
+    # TODO: Implement this function.
     def retrain(self, ilastik_cmd):
-        """Retrain the project using ilastik."""
+        """Retrain the project using ilastik.
+
+        :param ilastik_cmd: path to the file run_ilastik.sh
+        :return:
+        """
         return
 
+    # TODO: Implement this function.
     def merge_probs_into_raw(self, data_nr, probs_filename=None):
         """Merge probabilities into raw data.
 
         If probs_filename is None, the default output of retrain is taken.
+        :param data_nr:
+        :param probs_filename:
+        :return:
         """
         return
