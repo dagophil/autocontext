@@ -1,4 +1,5 @@
 import vigra
+import numpy
 import os
 import h5py
 import ilp_constants as const
@@ -209,7 +210,7 @@ class ILP(object):
         :param data_nr: number of dataset
         """
         data_axistags = self._get_axistags_from_data(data_nr)
-        self.set_axistags(data_nr, data_axistags);
+        self.set_axistags(data_nr, data_axistags)
 
     @staticmethod
     def _h5_labels(proj, data_nr):
@@ -275,13 +276,65 @@ class ILP(object):
             h5_blocks.attrs['blockSlice'] = block_slices[i]
         proj.close()
 
-    # TODO: Update docstring (return).
+    def _reshape_labels(self, data_nr, old_axisorder, new_axisorder):
+        """Reshapes the label blocks and their slices.
+
+        :param data_nr: number of dataset
+        :param old_axisorder: old axisorder of dataset
+        :param new_axisorder: new axisorder of dataset
+        """
+        # NOTE:
+        # When creating labels in ilastik, the axisorder of the labels is the same as
+        # in the dataset, except that the c-axis is added,  the t-axis is moved to the
+        # left and the c-axis is moved to the right.
+
+        # Get blocks and block slices.
+        label_blocks, block_slices = self.get_labels(data_nr)
+
+        # Make lists of old_axisorder and block_slices, so it is easier to insert and swap values.
+        old_axisorder = list(old_axisorder)
+        block_slices = [sl[1:-1].split(",") for sl in block_slices]
+
+        # Check if it is possible to sort the axes.
+        if len(old_axisorder) != len(label_blocks[0].shape):
+            if not "c" in old_axisorder:
+                old_axisorder.append("c")
+            else:
+                raise Exception("The labels have the wrong shape or the axisorder is wrong.")
+        if not len(label_blocks[0].shape) == len(old_axisorder):
+            raise Exception("The labels have the wrong shape or the axisorder is wrong.")
+        for axis in old_axisorder:
+            if not axis in new_axisorder:
+                raise Exception("The axisorder is wrong.")
+
+        # Sort the axes.
+        for i, axis in enumerate(new_axisorder):
+            # If the new axis is not found, insert it at the current position.
+            if not axis in old_axisorder:
+                old_axisorder.insert(i, axis)
+                label_blocks = [numpy.expand_dims(block, i) for block in label_blocks]
+                for sl in block_slices:
+                    sl.insert(i, "0:1")
+                continue
+
+            # If the axis is at the wrong position, swap it to the correct position.
+            old_index = old_axisorder.index(axis)
+            if old_index != i:
+                old_axisorder[i], old_axisorder[old_index] = old_axisorder[old_index], old_axisorder[i]
+                label_blocks = [numpy.swapaxes(block, i, old_index) for block in label_blocks]
+                for sl in block_slices:
+                    sl[i], sl[old_index] = sl[old_index], sl[i]
+                continue
+
+        # Write the reshaped labels into the project file.
+        block_slices = ["[" + ",".join(sl) + "]" for sl in block_slices]
+        self.replace_labels(data_nr, label_blocks, block_slices)
+
     def extend_data_tzyxc(self, data_nr=None):
         """Extend the dimension of some dataset and its labels to tzyxc.
 
         If data_nr is None, all datasets are extended.
         :param data_nr: number of dataset
-        :return:
         """
         if data_nr is None:
             for i in range(self.data_count):
@@ -304,8 +357,8 @@ class ILP(object):
             self.set_axisorder(data_nr, "tzyxc")
             self._set_axistags_from_data(data_nr)
 
-            # TODO:
-            # Reshape the labels to tzyxc and update label's blockSlices attribute.
+            # Reshape the labels.
+            self._reshape_labels(data_nr, axisorder, "tzyxc")
 
     # TODO: Implement this function.
     def retrain(self, ilastik_cmd):
