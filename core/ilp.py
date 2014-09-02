@@ -478,4 +478,6 @@ class ILP(object):
         data = vigra.VigraArray(numpy.concatenate([data, output_data], -1), axistags=data.axistags)
 
         # Overwrite the old data.
+        # TODO:
+        # Problem: For each loop in autocontext, the file size increases. Maybe delete the old file first.
         vigra.writeHDF5(data, self.get_data_path(data_nr), self.get_data_key(data_nr), compression="lzf")
