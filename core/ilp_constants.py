@@ -60,3 +60,7 @@ def label_blocks_list(lane_number, block_number):
 
 def label_blocks(lane_number, block_number):
     return "/".join(label_blocks_list(lane_number, block_number))
+
+
+def default_export_key():
+    return "exported_data"

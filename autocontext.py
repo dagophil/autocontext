@@ -9,52 +9,72 @@
 
 import os
 from shutil import copyfile
-from core.ilp import ILP
+from core.ilp2 import ILP
 from core.labels import scatter_labels
+import random
+import shutil
+import colorama as col
+
 
 #  ========  Params  ========
 ilastik_cmd = "/home/philip/inst/ilastik-1.1.1-Linux/run_ilastik.sh"
-project_name = "/home/philip/src/autocontext/data/test100.ilp"
-output_project_name = "/home/philip/src/autocontext/data/test100_output.ilp"
-probs_filename = "/home/philip/src/autocontext/data/test100_probs.h5"
+project_name = "/home/philip/src/autocontext/data/test_50_100.ilp"
+output_project_name = "/home/philip/src/autocontext/data/test_50_100_output.ilp"
+cache_folder = "data/output_data"
 loop_runs = 2
+label_data_nr = 0
 #  ==========================
 
+
+# Initialize colorama and random seeds.
+random.seed(0)
+col.init()
 
 # Copy the project file.
 if os.path.isfile(output_project_name):
     os.remove(output_project_name)
 copyfile(project_name, output_project_name)
 
+# Clear the cache folder.
+if os.path.isdir(cache_folder):
+    shutil.rmtree(cache_folder)
+
 # Create an ILP object for the project.
-proj = ILP(output_project_name)
+proj = ILP(output_project_name, cache_folder)
 
 # Copy the raw data and reshape it to txyzc.
-proj.copy_raw_data_txyzc()
+proj.extend_data_tzyxc()
 
-# Extract the labels.
-blocks, block_slices = proj.extract_label_blocks()
-labels = proj.label_names
+# Get the current number of channels in the datasets.
+# The data in those channels is left unchanged when the ilastik output is merged back.
+keep_channels = [proj.get_channel_count(i) for i in range(proj.data_count)]
 
-# Split the labels in parts.
-split_blocks = scatter_labels(blocks, len(labels), loop_runs)
+# Read the labels from the first block and split them into parts, so not all labels are used in each loop.
+blocks, block_slices = proj.get_labels(label_data_nr)
+label_count = len(proj.label_names)
+split_blocks = scatter_labels(blocks, label_count, loop_runs)
+
+# Get the number of datasets.
+data_count = proj.data_count
 
 # Do the autocontext loop.
 for i in range(loop_runs):
+    print col.Fore.GREEN + "Running loop %d of %d" % (i+1, loop_runs) + col.Fore.RESET
+
     # Insert the subset of the labels into the project.
     blocks = split_blocks[i]
-    proj.replace_label_blocks(blocks, block_slices)
+    proj.replace_labels(label_data_nr, blocks, block_slices)
 
-    # Run ilastik.
-    proj.run_ilastik(ilastik_cmd, probs_filename, delete_batch=True)
+    # Retrain the project.
+    print col.Fore.GREEN + "  Retraining:" + col.Fore.RESET
+    proj.retrain(ilastik_cmd)
 
-    # Merge the probabilities into the raw data.
-    proj.merge_probs_into_raw(probs_filename)
+    # Predict all datasets.
+    for k in range(data_count):
+        print col.Fore.GREEN + "  Predicting dataset %d of %d:" % (k+1, data_count) + col.Fore.RESET
+        proj.predict_dataset(ilastik_cmd, k)
 
-    # Show some output.
-    print
-    print "   ----- Finished step {} of {} -----".format(i+1, loop_runs)
-    print
-
-# TODO:
-# After the loops, shall the original labels be reinserted?
+    # Merge the probabilities back into the datasets.
+    print col.Fore.GREEN + "  Merging output back into datasets." + col.Fore.RESET
+    for k in range(data_count):
+        proj.merge_output_into_dataset(k, keep_channels[k])

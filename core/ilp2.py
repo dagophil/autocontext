@@ -157,6 +157,14 @@ class ILP(object):
         """
         return vigra.readHDF5(self.get_data_path(data_nr), self.get_data_key(data_nr))
 
+    def get_output_data(self, data_nr):
+        """Returns the dataset that was produced by ilastik.
+
+        :param data_nr: number of dataset
+        :return: output dataset of ilastik
+        """
+        return vigra.readHDF5(self._get_output_data_path(data_nr), const.default_export_key())
+
     def get_cache_data_path(self, data_nr):
         """Returns the file path to the dataset copy in the cache folder.
 
@@ -175,6 +183,20 @@ class ILP(object):
         cache_path = self.get_cache_data_path(data_nr)
         path, ext = os.path.splitext(cache_path)
         return path + "_probs" + ext
+
+    def get_channel_count(self, data_nr):
+        """Returns the number of channels of the dataset.
+
+        :param data_nr: number of dataset
+        :return: number of channels of dataset
+        """
+        data_path = self.get_data_path(data_nr)
+        data_key = self.get_data_key(data_nr)
+        data = h5py.File(data_path, "r")
+        channel_count = data[data_key].shape[-1]
+        # TODO: Use axistags to find out which axes really contains the channels.
+        data.close()
+        return channel_count
 
     def get_axisorder(self, data_nr):
         """Returns the axisorder of the dataset.
@@ -396,22 +418,26 @@ class ILP(object):
         cmd = '{} --headless --project {} --retrain'.format(ilastik_cmd, self.project_filename)
         os.system(cmd)
 
-    def predict_dataset(self, ilastik_cmd, data_nr=None):
+    def predict_all_datasets(self, ilastik_cmd):
+        """Calls predict_dataset for each dataset in the project.
+
+        :param ilastik_cmd: path to the file run_ilastik.sh
+        """
+        for i in range(self.data_count):
+            self.predict_dataset(ilastik_cmd, i)
+
+    def predict_dataset(self, ilastik_cmd, data_nr):
         """Uses ilastik to predict the probabilities of the dataset.
 
         If data_nr is None, all datasets are predicted.
         :param ilastik_cmd: path to the file run_ilastik.sh
         :param data_nr: number of dataset
         """
-        if data_nr is None:
-            for i in range(self.data_count):
-                self.predict_dataset(ilastik_cmd, i)
-        else:
-            output_filename = self._get_output_data_path(data_nr)
-            data_path_key = self.get_data_path_key(data_nr)
-            cmd = '{} --headless --project {} --output_format hdf5 --output_filename_format {} {}'\
-                .format(ilastik_cmd, self.project_filename, output_filename, data_path_key)
-            os.system(cmd)
+        output_filename = self._get_output_data_path(data_nr)
+        data_path_key = self.get_data_path_key(data_nr)
+        cmd = '{} --headless --project {} --output_format hdf5 --output_filename_format {} {}'\
+            .format(ilastik_cmd, self.project_filename, output_filename, data_path_key)
+        os.system(cmd)
 
     def predict(self, ilastik_cmd, input_filename, output_filename):
         """Uses ilastik to predict the probabilities of the given file.
@@ -424,13 +450,32 @@ class ILP(object):
             .format(ilastik_cmd, self.project_filename, output_filename, input_filename)
         os.system(cmd)
 
-    # TODO: Implement this function.
-    def merge_probs_into_raw(self, data_nr, probs_filename=None):
-        """Merge probabilities into raw data.
+    def merge_output_into_dataset(self, data_nr, n=0):
+        """Merges the ilastik output in the dataset. The first n channels of the dataset are left unchanged.
 
-        If probs_filename is None, the default output of retrain is taken.
-        :param data_nr:
-        :param probs_filename:
-        :return:
+        It is assumed, that extend_data_tzyxc() has been called, so the channels are in the last dimension.
+        :param data_nr: number of dataset
+        :param n: number of channels that are left unchanged
         """
-        raise NotImplementedError
+        # Read the data.
+        data = self.get_data(data_nr)
+        output_data = self.get_output_data(data_nr)
+
+        # Check if the last dimension is used for the channels.
+        if not hasattr(data, "axistags") or not hasattr(output_data, "axistags"):
+            raise Exception("Dataset has no axistags.")
+        if data.axistags[-1].key != "c" or output_data.axistags[-1].key != "c":
+            raise Exception("Dataset has wrong axistags.")
+
+        # Check that both datasets have the same shape, except for the number of channels.
+        if data.shape[:-1] != output_data.shape[:-1] or len(data.shape) != len(output_data.shape):
+            raise Exception("Both datasets must have the same shape, except for the number of channels.")
+
+        # Delete the all channels of data except for the first n ones.
+        data = data[..., 0:n]
+
+        # Merge the datasets together and preserve the axistags.
+        data = vigra.VigraArray(numpy.concatenate([data, output_data], -1), axistags=data.axistags)
+
+        # Overwrite the old data.
+        vigra.writeHDF5(data, self.get_data_path(data_nr), self.get_data_key(data_nr), compression="lzf")
