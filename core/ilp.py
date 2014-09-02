@@ -54,12 +54,12 @@ def reshape_tzyxc(data):
     return data.reshape(data_shape, axistags=axistags)
 
 
-# TODO:
-# Use joblib to cache the accesses of the h5 project file.
-# https://pythonhosted.org/joblib/memory.html
 class ILP(object):
     """Provides basic interactions with ilp files.
     """
+    # TODO:
+    # Use joblib to cache the accesses of the h5 project file.
+    # https://pythonhosted.org/joblib/memory.html
 
     def __init__(self, project_filename, output_folder):
         self._project_filename = project_filename
@@ -194,7 +194,7 @@ class ILP(object):
         data_key = self.get_data_key(data_nr)
         data = h5py.File(data_path, "r")
         channel_count = data[data_key].shape[-1]
-        # TODO: Use axistags to find out which axes really contains the channels.
+        # TODO: Use axistags to find out which axis really contains the channels.
         data.close()
         return channel_count
 
