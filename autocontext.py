@@ -9,7 +9,7 @@
 
 import os
 from shutil import copyfile
-from core.ilp2 import ILP
+from core.ilp import ILP
 from core.labels import scatter_labels
 import random
 import shutil
