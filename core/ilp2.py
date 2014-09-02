@@ -358,7 +358,7 @@ class ILP(object):
         self.replace_labels(data_nr, label_blocks, block_slices)
 
     def extend_data_tzyxc(self, data_nr=None):
-        """Extend the dimension of the dataset and its labels to tzyxc.
+        """Extends the dimension of the dataset and its labels to tzyxc.
 
         If data_nr is None, all datasets are extended.
         :param data_nr: number of dataset
@@ -389,14 +389,14 @@ class ILP(object):
                 self._reshape_labels(data_nr, axisorder, "tzyxc")
 
     def retrain(self, ilastik_cmd):
-        """Retrain the project using ilastik.
+        """Retrains the project using ilastik.
 
         :param ilastik_cmd: path to the file run_ilastik.sh
         """
         cmd = '{} --headless --project {} --retrain'.format(ilastik_cmd, self.project_filename)
         os.system(cmd)
 
-    def predict(self, ilastik_cmd, data_nr=None):
+    def predict_dataset(self, ilastik_cmd, data_nr=None):
         """Uses ilastik to predict the probabilities of the dataset.
 
         If data_nr is None, all datasets are predicted.
@@ -405,13 +405,24 @@ class ILP(object):
         """
         if data_nr is None:
             for i in range(self.data_count):
-                self.predict(ilastik_cmd, i)
+                self.predict_dataset(ilastik_cmd, i)
         else:
             output_filename = self._get_output_data_path(data_nr)
             data_path_key = self.get_data_path_key(data_nr)
             cmd = '{} --headless --project {} --output_format hdf5 --output_filename_format {} {}'\
                 .format(ilastik_cmd, self.project_filename, output_filename, data_path_key)
             os.system(cmd)
+
+    def predict(self, ilastik_cmd, input_filename, output_filename):
+        """Uses ilastik to predict the probabilities of the given file.
+
+        :param ilastik_cmd: path to the file run_ilastik.sh
+        :param input_filename: h5 path with key to input data (e. g. data/raw.h5/raw)
+        :param output_filename: output filename
+        """
+        cmd = '{} --headless --project {} --output_format hdf5 --output_filename_format {} {}'\
+            .format(ilastik_cmd, self.project_filename, output_filename, input_filename)
+        os.system(cmd)
 
     # TODO: Implement this function.
     def merge_probs_into_raw(self, data_nr, probs_filename=None):
