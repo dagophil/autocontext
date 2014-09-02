@@ -128,6 +128,16 @@ class ILP(object):
         data_key = os.path.basename(data_path)
         return data_key
 
+    def get_data_path_key(self, data_nr):
+        """Returns the h5 path of the dataset (e. g. data/raw.h5/raw).
+
+        :param data_nr: number of dataset
+        :return: h5 path of dataset
+        """
+        data_path = self.get_data_path(data_nr)
+        data_key = self.get_data_key(data_nr)
+        return data_path + "/" + data_key
+
     def set_data_path_key(self, data_nr, new_path, new_key):
         """Sets file path and h5 key of the dataset.
 
@@ -147,15 +157,24 @@ class ILP(object):
         """
         return vigra.readHDF5(self.get_data_path(data_nr), self.get_data_key(data_nr))
 
-    def get_output_data_path(self, data_nr):
-        """Returns the file path to the probability data of the dataset.
+    def get_cache_data_path(self, data_nr):
+        """Returns the file path to the dataset copy in the cache folder.
 
         :param data_nr: number of dataset
-        :return: file path to probability data of the dataset
+        :return: file path to dataset in the cache folder
         """
-        data_path = self.get_data_path(data_nr)
-        filename, ext = os.path.splitext(os.path.basename(data_path))
-        return os.path.join(self.cache_folder, filename + "_probs" + ext)
+        data_path = os.path.basename(self.get_data_path(data_nr))
+        return os.path.join(self.cache_folder, data_path)
+
+    def _get_output_data_path(self, data_nr):
+        """Returns the file path to the output file produced by ilastik.
+
+        :param data_nr: number of dataset
+        :return: file path to output file from ilastik
+        """
+        cache_path = self.get_cache_data_path(data_nr)
+        path, ext = os.path.splitext(cache_path)
+        return path + "_probs" + ext
 
     def get_axisorder(self, data_nr):
         """Returns the axisorder of the dataset.
@@ -339,7 +358,7 @@ class ILP(object):
         self.replace_labels(data_nr, label_blocks, block_slices)
 
     def extend_data_tzyxc(self, data_nr=None):
-        """Extend the dimension of some dataset and its labels to tzyxc.
+        """Extend the dimension of the dataset and its labels to tzyxc.
 
         If data_nr is None, all datasets are extended.
         :param data_nr: number of dataset
@@ -356,26 +375,43 @@ class ILP(object):
             new_data = reshape_tzyxc(data)
 
             # Save the reshaped dataset.
-            output_path = self.get_output_data_path(data_nr)
+            output_path = self.get_cache_data_path(data_nr)
             output_key = self.get_data_key(data_nr)
-            vigra.writeHDF5(new_data, output_path, output_key)
+            vigra.writeHDF5(new_data, output_path, output_key, compression="lzf")
 
             # Update the project file.
             self.set_data_path_key(data_nr, output_path, output_key)
             self.set_axisorder(data_nr, "tzyxc")
             self._set_axistags_from_data(data_nr)
 
-            # Reshape the labels.
-            self._reshape_labels(data_nr, axisorder, "tzyxc")
+            # If the dataset has labels, reshape them.
+            if self._label_block_count(data_nr) > 0:
+                self._reshape_labels(data_nr, axisorder, "tzyxc")
 
-    # TODO: Implement this function.
     def retrain(self, ilastik_cmd):
         """Retrain the project using ilastik.
 
         :param ilastik_cmd: path to the file run_ilastik.sh
-        :return:
         """
-        raise NotImplementedError
+        cmd = '{} --headless --project {} --retrain'.format(ilastik_cmd, self.project_filename)
+        os.system(cmd)
+
+    def predict(self, ilastik_cmd, data_nr=None):
+        """Uses ilastik to predict the probabilities of the dataset.
+
+        If data_nr is None, all datasets are predicted.
+        :param ilastik_cmd: path to the file run_ilastik.sh
+        :param data_nr: number of dataset
+        """
+        if data_nr is None:
+            for i in range(self.data_count):
+                self.predict(ilastik_cmd, i)
+        else:
+            output_filename = self._get_output_data_path(data_nr)
+            data_path_key = self.get_data_path_key(data_nr)
+            cmd = '{} --headless --project {} --output_format hdf5 --output_filename_format {} {}'\
+                .format(ilastik_cmd, self.project_filename, output_filename, data_path_key)
+            os.system(cmd)
 
     # TODO: Implement this function.
     def merge_probs_into_raw(self, data_nr, probs_filename=None):
