@@ -6,16 +6,27 @@ How to use:
 * Select some features.
 * Create labels (only on one dataset).
 * Save project and exit ilastik.
-* Set the desired parameters (see below).
-* Run this script.
+* Run this script (parameters: see __main__ part below) or use the autocontext function.
 """
-
 from core.ilp import ILP
 from core.labels import scatter_labels
 import colorama as col
 
 
 def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None):
+    """Trains and predicts the ilastik project using the autocontext method.
+
+    The parameter weights can be used to take different amounts of the labels in each loop run.
+    Example: runs = 3, weights = [3, 2, 1]
+             The sum of the weights is 6, so in the first run, 1/2 (== 3/6) of the labels is used,
+             then 1/3 (== 2/6), then 1/6.
+    If weights is None, the labels are equally distributed over the loop runs.
+    :param ilastik_cmd: path to run_ilastik.sh
+    :param project: the ILP object of the project
+    :param runs: number of runs of the autocontet loop
+    :param label_data_nr: number of dataset that contains the labels
+    :param weights: weights for the labels
+    """
     assert isinstance(project, ILP)
 
     # Create weights if none were given.
@@ -90,9 +101,22 @@ if __name__ == "__main__":
     shutil.copyfile(project_name, output_project_name)
 
     # Clear the cache folder.
-    # TODO: Maybe don't do this...
     if os.path.isdir(cache_folder):
-        shutil.rmtree(cache_folder)
+        print "The cache folder", os.path.abspath(cache_folder), "already exists."
+        clear_cache = raw_input("Clear cache folder? [y|n] : ")
+        if clear_cache in ["y", "Y"]:
+            for f in os.listdir(cache_folder):
+                f_path = os.path.join(cache_folder, f)
+                try:
+                    if os.path.isfile(f_path):
+                        os.remove(f_path)
+                    elif os.path.isdir(f_path):
+                        shutil.rmtree(f_path)
+                except Exception, e:
+                    print e
+            print "Cleared cache folder."
+        else:
+            print "Cache folder not cleared."
 
     # Create an ILP object for the project.
     proj = ILP(output_project_name, cache_folder)
