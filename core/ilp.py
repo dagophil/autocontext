@@ -74,6 +74,7 @@ class ILP(object):
         """Returns filename of the ilp project.
 
         :return: filename of the ilp project
+        :rtype: str
         """
         return self._project_filename
 
@@ -82,6 +83,7 @@ class ILP(object):
         """Returns directory path of the project file.
 
         :return: directory path of project file
+        :rtype: str
         """
         return os.path.dirname(os.path.realpath(self.project_filename))
 
@@ -90,6 +92,7 @@ class ILP(object):
         """Returns path of the cache folder.
 
         :return: path of the cache folder
+        :rtype: str
         """
         return self._cache_folder
 
@@ -98,6 +101,7 @@ class ILP(object):
         """Returns the number of datasets inside the project file.
 
         :return: number of datasets
+        :rtype: int
         """
         proj = h5py.File(self.project_filename, "r")
         input_infos = eval_h5(proj, const.input_infos_list())
@@ -110,6 +114,7 @@ class ILP(object):
 
         :param data_nr: number of dataset
         :return: file path of the dataset
+        :rtype: str
         """
         h5_key = const.filepath(data_nr)
         data_path = vigra.readHDF5(self.project_filename, h5_key)
@@ -122,6 +127,7 @@ class ILP(object):
 
         :param data_nr: number of dataset
         :return: key of the dataset inside its h5 file
+        :rtype: str
         """
         h5_key = const.filepath(data_nr)
         data_path = vigra.readHDF5(self.project_filename, h5_key)
@@ -133,6 +139,7 @@ class ILP(object):
 
         :param data_nr: number of dataset
         :return: h5 path of dataset
+        :rtype: str
         """
         data_path = self.get_data_path(data_nr)
         data_key = self.get_data_key(data_nr)
@@ -170,6 +177,7 @@ class ILP(object):
 
         :param data_nr: number of dataset
         :return: file path to dataset in the cache folder
+        :rtype: str
         """
         data_path = os.path.basename(self.get_data_path(data_nr))
         return os.path.join(self.cache_folder, data_path)
@@ -179,6 +187,7 @@ class ILP(object):
 
         :param data_nr: number of dataset
         :return: file path to output file from ilastik
+        :rtype: str
         """
         cache_path = self.get_cache_data_path(data_nr)
         path, ext = os.path.splitext(cache_path)
@@ -189,12 +198,19 @@ class ILP(object):
 
         :param data_nr: number of dataset
         :return: number of channels of dataset
+        :rtype: int
         """
+        # Find the channel axis.
+        channel_dim = -1
+        axisorder = self.get_axisorder(data_nr)
+        if "c" in axisorder:
+            channel_dim = axisorder.find("c")
+
+        # Find the channel count.
         data_path = self.get_data_path(data_nr)
         data_key = self.get_data_key(data_nr)
         data = h5py.File(data_path, "r")
-        channel_count = data[data_key].shape[-1]
-        # TODO: Use axistags to find out which axis really contains the channels.
+        channel_count = data[data_key].shape[channel_dim]
         data.close()
         return channel_count
 
@@ -203,6 +219,7 @@ class ILP(object):
 
         :param data_nr: number of dataset
         :return: axisorder of dataset
+        :rtype: str
         """
         return vigra.readHDF5(self.project_filename, const.axisorder(data_nr))
 
@@ -220,6 +237,7 @@ class ILP(object):
 
         :param data_nr: number of dataset
         :return: axistags of dataset
+        :rtype: str
         """
         return vigra.readHDF5(self.project_filename, const.axistags(data_nr))
 
@@ -237,6 +255,7 @@ class ILP(object):
 
         :param data_nr: number of dataset
         :return: axistags
+        :rtype: str
         """
         data_path = self.get_data_path(data_nr)
         data_key = self.get_data_key(data_nr)
@@ -260,7 +279,8 @@ class ILP(object):
         :param proj: the ilp project file
         :type proj: h5py.File
         :param data_nr: number of dataset
-        :return: labels of the dataset as h5py object
+        :return: labels of the dataset
+        :rtype: h5py.Group
         """
         if not isinstance(proj, h5py.File):
             raise Exception("A valid h5py File object must be given.")
@@ -273,6 +293,7 @@ class ILP(object):
 
         :param data_nr: number of dataset
         :return: number of label blocks of the dataset
+        :rtype: int
         """
         proj = h5py.File(self.project_filename, "r")
         labels = ILP._h5_labels(proj, data_nr)
@@ -285,6 +306,7 @@ class ILP(object):
 
         :param data_nr: number of dataset
         :return: labels and blockslices of the dataset
+        :rtype: tuple
         """
         # Read the label blocks.
         block_count = self._label_block_count(data_nr)
@@ -303,6 +325,7 @@ class ILP(object):
         """Returns the names of the labels of the dataset.
 
         :return: names of the labels of the dataset
+        :rtype: numpy.ndarray
         """
         return vigra.readHDF5(self.project_filename, const.label_names())
 
