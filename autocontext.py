@@ -36,7 +36,7 @@ def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None):
         raise Exception("The number of weights must not be smaller than the number of runs.")
     weights = weights[:runs]
 
-    # Copy the raw data and reshape it to txyzc.
+    # Copy the raw data to the output folder and reshape it to txyzc.
     project.extend_data_tzyxc()
 
     # Get the number of datasets.
