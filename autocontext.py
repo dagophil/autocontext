@@ -13,6 +13,8 @@ from core.labels import scatter_labels
 from core.ilp import which
 import colorama as col
 import sys
+import argparse
+import os
 
 
 def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None):
@@ -79,6 +81,37 @@ def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None):
     project.replace_labels(label_data_nr, blocks, block_slices)
 
 
+def process_command_line():
+    """Parse command line arguments.
+    """
+    # Add the command line arguments.
+    parser = argparse.ArgumentParser(description="ilastik autocontext",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("infile", type=str,
+                        help="input file")
+    parser.add_argument("-o", "--outfile", type=str, default="",
+                        help="output file")
+    parser.add_argument("-n", "--nloops", type=int, default=3,
+                        help="number of autocontext loop iterations")
+    parser.add_argument("-d", "--labeldataset", type=int, default=0,
+                        help="id of dataset in the ilp file that contains the labels")
+    parser.add_argument("-c", "--cache", type=str, default="cache",
+                        help="name of the cache folder")
+    parser.add_argument("--ilastik", type=str, required=True,
+                        help="path to the file run_ilastik.sh")
+    args = parser.parse_args()
+
+    # Check arguments for validity.
+    if not os.path.isfile(args.infile):
+        raise Exception("%s is not a file" % args.infile)
+    if len(args.outfile) == 0:
+        file_path, file_ext = os.path.splitext(args.infile)
+        args.outfile = file_path + "_out" + file_ext
+    if not os.path.isfile(args.ilastik) or not os.access(args.ilastik, os.X_OK):
+        raise Exception("%s is not an executable file" % args.ilastik)
+    return args
+
+
 def main():
     """
     """
@@ -86,14 +119,8 @@ def main():
     import random
     import os
 
-    #  ========  Parameters  ========
-    ilastik_sh = "/home/philip/inst/ilastik-1.1.1-Linux/run_ilastik.sh"
-    project_name = "/home/philip/src/autocontext/data/test_50_100.ilp"
-    output_project_name = "/home/philip/src/autocontext/data/test_50_100_output.ilp"
-    cache_folder = "data/output_data"
-    loop_runs = 3
-    label_dataset = 0
-    #  ==============================
+    # Read command line arguments.
+    args = process_command_line()
 
     # Check if h5repack is installed.
     if which("h5repack") is None:
@@ -104,17 +131,18 @@ def main():
     col.init()
 
     # Copy the project file.
-    if os.path.isfile(output_project_name):
-        os.remove(output_project_name)
-    shutil.copyfile(project_name, output_project_name)
+    # TODO: If the file exists, ask the user if it shall be deleted.
+    if os.path.isfile(args.outfile):
+        os.remove(args.outfile)
+    shutil.copyfile(args.infile, args.outfile)
 
     # Clear the cache folder.
-    if os.path.isdir(cache_folder):
-        print "The cache folder", os.path.abspath(cache_folder), "already exists."
+    if os.path.isdir(args.cache):
+        print "The cache folder", os.path.abspath(args.cache), "already exists."
         clear_cache = raw_input("Clear cache folder? [y|n] : ")
         if clear_cache in ["y", "Y"]:
-            for f in os.listdir(cache_folder):
-                f_path = os.path.join(cache_folder, f)
+            for f in os.listdir(args.cache):
+                f_path = os.path.join(args.cache, f)
                 try:
                     if os.path.isfile(f_path):
                         os.remove(f_path)
@@ -127,10 +155,10 @@ def main():
             print "Cache folder not cleared."
 
     # Create an ILP object for the project.
-    proj = ILP(output_project_name, cache_folder)
+    proj = ILP(args.outfile, args.cache)
 
     # Do the autocontext loop.
-    autocontext(ilastik_sh, proj, loop_runs, label_dataset)
+    autocontext(args.ilastik, proj, args.nloops, args.labeldataset)
 
     return 0
 
