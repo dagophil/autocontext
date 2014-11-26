@@ -528,6 +528,7 @@ class ILP(object):
         # Use h5repack to remove the memory holes created by vigra.writeHDF5.
         if which("h5repack") is None:
             raise Exception("Currently, h5repack is needed to remove the memory holes created by vigra.writeHDF5.")
+        # TODO: Implement a way that does not use h5repack.
         filedir, filename = os.path.split(self.get_data_path(data_nr))
         temp_filepath = os.path.join(filedir, "_TODELETE_" + filename)
         os.rename(self.get_data_path(data_nr), temp_filepath)

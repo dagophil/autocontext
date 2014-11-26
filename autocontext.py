@@ -12,6 +12,7 @@ from core.ilp import ILP
 from core.labels import scatter_labels
 from core.ilp import which
 import colorama as col
+import sys
 
 
 def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None):
@@ -78,7 +79,9 @@ def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None):
     project.replace_labels(label_data_nr, blocks, block_slices)
 
 
-if __name__ == "__main__":
+def main():
+    """
+    """
     import shutil
     import random
     import os
@@ -128,3 +131,10 @@ if __name__ == "__main__":
 
     # Do the autocontext loop.
     autocontext(ilastik_sh, proj, loop_runs, label_dataset)
+
+    return 0
+
+
+if __name__ == "__main__":
+    status = main()
+    sys.exit(status)
