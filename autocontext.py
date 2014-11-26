@@ -10,6 +10,7 @@ How to use:
 """
 from core.ilp import ILP
 from core.labels import scatter_labels
+from core.ilp import which
 import colorama as col
 
 
@@ -90,6 +91,10 @@ if __name__ == "__main__":
     loop_runs = 3
     label_dataset = 0
     #  ==============================
+
+    # Check if h5repack is installed.
+    if which("h5repack") is None:
+        raise Exception("Currently, h5repack is needed to remove the memory holes created by vigra.writeHDF5.")
 
     # Initialize colorama and random seeds.
     random.seed(0)
