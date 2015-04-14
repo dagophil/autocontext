@@ -178,13 +178,52 @@ class ILP(object):
         h5_key = const.filepath(data_nr)
         vigra.writeHDF5(rel_path, self.project_filename, h5_key)
 
+    def get_data_location(self, data_nr):
+        """Returns the data location (either "ProjectInternal" or "FileSystem").
+
+        :param data_nr: number of dataset
+        :return: data location
+        :rtype: str
+        """
+        h5_key = const.datalocation(data_nr)
+        data_location = vigra.readHDF5(self.project_filename, h5_key)
+        return data_location
+
+    def get_dataset_id(self, data_nr):
+        """Returns the ilp dataset id.
+
+        :param data_nr: number of dataset
+        :return: dataset id
+        :rtype: str
+        """
+        h5_key = const.datasetid(data_nr)
+        dataset_id = vigra.readHDF5(self.project_filename, h5_key)
+        return dataset_id
+
+    def get_localdata_key(self, data_nr):
+        """Returns the h5 key of the data that is stored inside the ilp file.
+
+        :param data_nr: number of dataset
+        :return: key of the data stored inside the ilp file
+        :rtype: str
+        """
+        dataset_id = self.get_dataset_id(data_nr)
+        h5_key = const.localdata(dataset_id)
+        return h5_key
+
     def get_data(self, data_nr):
         """Returns the dataset.
 
         :param data_nr: number of dataset
         :return: the dataset
         """
-        return vigra.readHDF5(self.get_data_path(data_nr), self.get_data_key(data_nr))
+        location = self.get_data_location(data_nr)
+        if location == "ProjectInternal":
+            return vigra.readHDF5(self.project_filename, self.get_localdata_key(data_nr))
+        elif location == "FileSystem":
+            return vigra.readHDF5(self.get_data_path(data_nr), self.get_data_key(data_nr))
+        else:
+            raise Exception("Unknown data location: "+ location)
 
     def get_output_data(self, data_nr):
         """Returns the dataset that was produced by ilastik.

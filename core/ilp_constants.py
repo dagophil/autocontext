@@ -9,6 +9,32 @@ def filepath(lane_number):
     return "/".join(filepath_list(lane_number))
 
 
+def datalocation_list(lane_number):
+    lane_number = str(lane_number).zfill(4)
+    return ["Input Data", "infos", "lane" + lane_number, "Raw Data", "location"]
+
+
+def datalocation(lane_number):
+    return "/".join(datalocation_list(lane_number))
+
+
+def datasetid_list(lane_number):
+    lane_number = str(lane_number).zfill(4)
+    return ["Input Data", "infos", "lane" + lane_number, "Raw Data", "datasetId"]
+
+
+def datasetid(lane_number):
+    return "/".join(datasetid_list(lane_number))
+
+
+def localdata_list(dataset_id):
+    return ["Input Data", "local_data", dataset_id]
+
+
+def localdata(dataset_id):
+    return "/".join(localdata_list(dataset_id))
+
+
 def axisorder_list(lane_number):
     lane_number = str(lane_number).zfill(4)
     return ["Input Data", "infos", "lane" + lane_number, "Raw Data", "axisorder"]
