@@ -138,11 +138,14 @@ class ILP(object):
         :return: file path of the dataset
         :rtype: str
         """
-        h5_key = const.filepath(data_nr)
-        data_path = vigra.readHDF5(self.project_filename, h5_key)
-        data_key = os.path.basename(data_path)
-        data_path = os.path.join(self.project_dir, data_path[:-len(data_key)-1])
-        return data_path
+        if self.is_internal(data_nr):
+            return self.project_filename
+        else:
+            h5_key = const.filepath(data_nr)
+            data_path = vigra.readHDF5(self.project_filename, h5_key)
+            data_key = os.path.basename(data_path)
+            data_path = os.path.join(self.project_dir, data_path[:-len(data_key)-1])
+            return data_path
 
     def get_data_key(self, data_nr):
         """Returns the h5 key of the dataset.
@@ -151,9 +154,13 @@ class ILP(object):
         :return: key of the dataset inside its h5 file
         :rtype: str
         """
-        h5_key = const.filepath(data_nr)
-        data_path = vigra.readHDF5(self.project_filename, h5_key)
-        data_key = os.path.basename(data_path)
+        if self.is_internal(data_nr):
+            dataset_id = self.get_dataset_id(data_nr)
+            data_key = const.localdata(dataset_id)
+        else:
+            h5_key = const.filepath(data_nr)
+            data_path = vigra.readHDF5(self.project_filename, h5_key)
+            data_key = os.path.basename(data_path)
         return data_key
 
     def get_data_path_key(self, data_nr):
@@ -211,19 +218,35 @@ class ILP(object):
         h5_key = const.localdata(dataset_id)
         return h5_key
 
+    def is_internal(self, data_nr):
+        """Returns true if the dataset is stored inside the ilp file and false if it is stored on the file system.
+
+        :param data_nr: number of dataset
+        :return: whether the dataset is stored inside the ilp file or note
+        :rtype: bool
+        """
+        location = self.get_data_location(data_nr)
+        return location == "ProjectInternal"
+
+    def _set_internal(self, data_nr, val):
+        """Sets the ilp flag of the given dataset to "ProjectInternal" if val is True, else to "FileSystem".
+
+        :param data_nr: number of dataset
+        :param val: whether to set the flag to "ProjectInternal" or "FileSystem"
+        """
+        h5_key = const.datalocation(data_nr)
+        if val:
+            vigra.writeHDF5("ProjectInternal", self.project_filename, h5_key)
+        else:
+            vigra.writeHDF5("FileSystem", self.project_filename, h5_key)
+
     def get_data(self, data_nr):
         """Returns the dataset.
 
         :param data_nr: number of dataset
         :return: the dataset
         """
-        location = self.get_data_location(data_nr)
-        if location == "ProjectInternal":
-            return vigra.readHDF5(self.project_filename, self.get_localdata_key(data_nr))
-        elif location == "FileSystem":
-            return vigra.readHDF5(self.get_data_path(data_nr), self.get_data_key(data_nr))
-        else:
-            raise Exception("Unknown data location: "+ location)
+        return vigra.readHDF5(self.get_data_path(data_nr), self.get_data_key(data_nr))
 
     def get_output_data(self, data_nr):
         """Returns the dataset that was produced by ilastik.
@@ -240,8 +263,11 @@ class ILP(object):
         :return: file path to dataset in the cache folder
         :rtype: str
         """
-        data_path = os.path.basename(self.get_data_path(data_nr))
-        return os.path.join(self.cache_folder, data_path)
+        if self.is_internal(data_nr):
+            return os.path.join(self.cache_folder, self.get_dataset_id(data_nr) + ".h5")
+        else:
+            data_path = os.path.basename(self.get_data_path(data_nr))
+            return os.path.join(self.cache_folder, data_path)
 
     def _get_output_data_path(self, data_nr):
         """Returns the file path to the output file produced by ilastik.
@@ -482,11 +508,15 @@ class ILP(object):
 
             # Save the reshaped dataset.
             output_path = self.get_cache_data_path(data_nr)
-            output_key = self.get_data_key(data_nr)
+            if self.is_internal(data_nr):
+                output_key = self.get_dataset_id(data_nr)
+            else:
+                output_key = self.get_data_key(data_nr)
             vigra.writeHDF5(new_data, output_path, output_key, compression="lzf")
 
             # Update the project file.
             self.set_data_path_key(data_nr, output_path, output_key)
+            self._set_internal(data_nr, False)
             self.set_axisorder(data_nr, "tzyxc")
             self._set_axistags_from_data(data_nr)
 
