@@ -15,10 +15,28 @@ def eval_h5(proj, key_list):
     """
     if not isinstance(proj, h5py.File):
         raise Exception("A valid h5py File object must be given.")
+    # TODO: Maybe add exception if len(key_list) == 0.
     val = proj
     for key in key_list:
         val = val[key]
     return val
+
+
+def del_from_h5(proj, key_list):
+    """Recursively apply the keys in key_list to proj and delete the end result.
+
+    Example: If key_list is ["key1", "key"], then proj["key1"]["key2"] will be deleted.
+    :param proj: h5py File object
+    :param key_list: list of keys to be applied to proj
+    """
+    if not isinstance(proj, h5py.File):
+        raise Exception("A valid h5py File object must be given.")
+    if len(key_list) == 0:
+        raise Exception("No keys were given.")
+    val = proj
+    for key in key_list[:-1]:
+        val = val[key]
+    del val[key_list[-1]]
 
 
 def reshape_tzyxc(data):
@@ -416,23 +434,30 @@ class ILP(object):
         """
         return vigra.readHDF5(self.project_filename, const.label_names())
 
-    def replace_labels(self, data_nr, blocks, block_slices):
+    def replace_labels(self, data_nr, blocks, block_slices, delete_old_blocks=True):
         """Replaces the labels and their block slices of the dataset.
 
         :param data_nr: number of dataset
         :param blocks: label blocks
         :param block_slices: block slices
+        :param delete_old_blocks: whether the old blocks in the project file shall be deleted
         """
-        if len(blocks) != self._label_block_count(data_nr):
-            raise Exception("Wrong number of label blocks to be inserted.")
-        if len(block_slices) != self._label_block_count(data_nr):
-            raise Exception("Wrong number of label block slices to be inserted.")
+        if len(blocks) != len(block_slices):
+            raise Exception("The number of blocks and block slices must be the same.")
+        if not delete_old_blocks:
+            if len(blocks) != self._label_block_count(data_nr):
+                raise Exception("Wrong number of label blocks to be inserted.")
 
         proj = h5py.File(self.project_filename, "r+")
-        for i in range(self._label_block_count(data_nr)):
+        if delete_old_blocks:
+            for i in range(self._label_block_count(data_nr)):
+                del_from_h5(proj, const.label_blocks_list(data_nr, i))
+
+        for i in range(len(blocks)):
             vigra.writeHDF5(blocks[i], self.project_filename, const.label_blocks(data_nr, i))
             h5_blocks = eval_h5(proj, const.label_blocks_list(data_nr, i))
             h5_blocks.attrs['blockSlice'] = block_slices[i]
+
         proj.close()
 
     def _reshape_labels(self, data_nr, old_axisorder, new_axisorder):
