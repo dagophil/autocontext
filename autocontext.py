@@ -2,9 +2,9 @@
 DESCRIPTION
 
 How to use:
-* Start a new ilastik project and add one or more datasets.
+* Start a new ilastik pixel classification project and add one or more datasets.
 * Select some features.
-* Create labels (only on one dataset).
+* Add some labels. Currently, you must place the labels in the same dataset.
 * Save project and exit ilastik.
 * Run this script (parameters: see __main__ part below) or use the autocontext function.
 """

@@ -7,6 +7,13 @@ Main part of the code is the python class ILP that can be used to open and modif
 Example usage
 =============
 
+Before using the script, you must create an ilastik project file:
+* Create an ilastik pixel classification project and add one or more datasets.
+* Select some features.
+* Add some labels. Currently, you must place the labels in the same dataset.
+* Save the project and exit ilastik.
+
+Now you can use the autocontext script.
 Open a terminal and run a command like the following:
 * python autocontext.py --help
 * python autocontext.py myproject.ilp --ilastik /usr/local/ilastik/run_ilastik.sh
@@ -23,4 +30,4 @@ Python packages:
 
 Other:
 * ilastik
-* h5repack: Currently, you need the to have the system command h5repack available.
+
