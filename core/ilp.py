@@ -552,7 +552,7 @@ class ILP(object):
         """
         output_filename = self._get_output_data_path(data_nr)
         data_path_key = self.get_data_path_key(data_nr)
-        cmd = '{} --headless --project {} --output_format hdf5 --output_filename_format {} {}'\
+        cmd = '"{}" --headless --project "{}" --output_format hdf5 --output_filename_format "{}" "{}"'\
             .format(ilastik_cmd, self.project_filename, output_filename, data_path_key)
         os.system(cmd)
 
@@ -563,7 +563,7 @@ class ILP(object):
         :param input_filename: h5 path with key to input data (e. g. data/raw.h5/raw)
         :param output_filename: output filename
         """
-        cmd = '{} --headless --project {} --output_format hdf5 --output_filename_format {} {}'\
+        cmd = '"{}" --headless --project "{}" --output_format hdf5 --output_filename_format "{}" "{}"'\
             .format(ilastik_cmd, self.project_filename, output_filename, input_filename)
         os.system(cmd)
 
