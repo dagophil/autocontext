@@ -532,7 +532,7 @@ class ILP(object):
 
         :param ilastik_cmd: path to the file run_ilastik.sh
         """
-        cmd = '{} --headless --project {} --retrain'.format(ilastik_cmd, self.project_filename)
+        cmd = '"{}" --headless --project "{}" --retrain'.format(ilastik_cmd, self.project_filename)
         os.system(cmd)
 
     def predict_all_datasets(self, ilastik_cmd):
