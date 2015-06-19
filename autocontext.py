@@ -10,7 +10,6 @@ How to use:
 """
 from core.ilp import ILP
 from core.labels import scatter_labels
-from core.ilp import which
 import colorama as col
 import sys
 import argparse
@@ -121,10 +120,6 @@ def main():
 
     # Read command line arguments.
     args = process_command_line()
-
-    # Check if h5repack is installed.
-    if which("h5repack") is None:
-        raise Exception("Currently, h5repack is needed to remove the memory holes created by vigra.writeHDF5.")
 
     # Initialize colorama and random seeds.
     random.seed(0)

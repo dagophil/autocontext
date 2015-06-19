@@ -72,28 +72,6 @@ def reshape_tzyxc(data):
     return data.reshape(data_shape, axistags=axistags)
 
 
-def which(program):
-    """Mimic the behavior of the UNIX 'which' command.
-
-    :param program: program name
-    :return: full path to the program or None if program not found
-    """
-    def is_exe(p):
-        return os.path.isfile(p) and os.access(p, os.X_OK)
-
-    file_path, file_name = os.path.split(program)
-    if file_path:
-        if is_exe(program):
-            return program
-    else:
-        for path in os.environ["PATH"].split(os.pathsep):
-            path = path.strip('"')
-            exe_file = os.path.join(path, program)
-            if is_exe(exe_file):
-                return exe_file
-    return None
-
-
 class ILP(object):
     """Provides basic interactions with ilp files.
     """
@@ -616,15 +594,9 @@ class ILP(object):
         # Merge the datasets together and preserve the axistags.
         data = vigra.VigraArray(numpy.concatenate([data, output_data], -1), axistags=data.axistags)
 
-        # Overwrite the old data.
-        vigra.writeHDF5(data, self.get_data_path(data_nr), self.get_data_key(data_nr), compression="lzf")
-
-        # Use h5repack to remove the memory holes created by vigra.writeHDF5.
-        if which("h5repack") is None:
-            raise Exception("Currently, h5repack is needed to remove the memory holes created by vigra.writeHDF5.")
-        # TODO: Implement a way that does not use h5repack.
-        filedir, filename = os.path.split(self.get_data_path(data_nr))
-        temp_filepath = os.path.join(filedir, "_TODELETE_" + filename)
-        os.rename(self.get_data_path(data_nr), temp_filepath)
-        os.system("h5repack -i {} -o {}".format(temp_filepath, self.get_data_path(data_nr)))
-        os.remove(temp_filepath)
+        # Save the result. (Do not use vigra.writeHDF5 directly on the existing file, since it creates memory holes.)
+        filepath = self.get_data_path(data_nr)
+        temp_filepath = filepath + "_TMP_"
+        vigra.writeHDF5(data, temp_filepath, self.get_data_key(data_nr), compression="lzf")
+        os.remove(filepath)
+        os.rename(temp_filepath, filepath)
