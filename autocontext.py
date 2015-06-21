@@ -4,7 +4,7 @@ DESCRIPTION
 How to use:
 * Start a new ilastik pixel classification project and add one or more datasets.
 * Select some features.
-* Add some labels. Currently, you must place the labels in the same dataset.
+* Add some labels.
 * Save project and exit ilastik.
 * Run this script (parameters: see __main__ part below) or use the autocontext function.
 """
