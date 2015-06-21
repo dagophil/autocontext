@@ -548,6 +548,7 @@ class ILP(object):
         """
         cmd = '"{}" --headless --project "{}" --retrain'.format(ilastik_cmd, self.project_filename)
         os.system(cmd)
+        # TODO: Use subprocess.call instead of os.system.
 
     def predict_all_datasets(self, ilastik_cmd):
         """Calls predict_dataset for each dataset in the project.
@@ -569,6 +570,7 @@ class ILP(object):
         cmd = '"{}" --headless --project "{}" --output_format hdf5 --output_filename_format "{}" "{}"'\
             .format(ilastik_cmd, self.project_filename, output_filename, data_path_key)
         os.system(cmd)
+        # TODO: Use subprocess.call instead of os.system.
 
     def predict(self, ilastik_cmd, input_filename, output_filename):
         """Uses ilastik to predict the probabilities of the given file.
@@ -580,6 +582,7 @@ class ILP(object):
         cmd = '"{}" --headless --project "{}" --output_format hdf5 --output_filename_format "{}" "{}"'\
             .format(ilastik_cmd, self.project_filename, output_filename, input_filename)
         os.system(cmd)
+        # TODO: Use subprocess.call instead of os.system.
 
     def merge_output_into_dataset(self, data_nr, n=0):
         """Merges the ilastik output in the dataset. The first n channels of the dataset are left unchanged.
