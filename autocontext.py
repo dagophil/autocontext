@@ -55,7 +55,8 @@ def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None):
         blocks_with_slicing = [(i, project.get_labels(i)) for i in xrange(project.labelsets_count)]
     else:
         blocks_with_slicing = [(label_data_nr, project.get_labels(label_data_nr))]
-    scattered_labels_list = [scatter_labels(blocks, label_count, runs, weights) for i, (blocks, block_slices) in blocks_with_slicing]
+    scattered_labels_list = [scatter_labels(blocks, label_count, runs, weights)
+                             for i, (blocks, block_slices) in blocks_with_slicing]
 
     # Do the autocontext loop.
     for i in range(runs):

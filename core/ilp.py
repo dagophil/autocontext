@@ -472,20 +472,20 @@ class ILP(object):
 
         # Check if it is possible to sort the axes.
         if len(old_axisorder) != len(label_blocks[0].shape):
-            if not "c" in old_axisorder:
+            if "c" not in old_axisorder:
                 old_axisorder.append("c")
             else:
                 raise Exception("The labels have the wrong shape or the axisorder is wrong.")
         if not len(label_blocks[0].shape) == len(old_axisorder):
             raise Exception("The labels have the wrong shape or the axisorder is wrong.")
         for axis in old_axisorder:
-            if not axis in new_axisorder:
+            if axis not in new_axisorder:
                 raise Exception("The axisorder is wrong.")
 
         # Sort the axes.
         for i, axis in enumerate(new_axisorder):
             # If the new axis is not found, insert it at the current position.
-            if not axis in old_axisorder:
+            if axis not in old_axisorder:
                 old_axisorder.insert(i, axis)
                 label_blocks = [numpy.expand_dims(block, i) for block in label_blocks]
                 for sl in block_slices:
