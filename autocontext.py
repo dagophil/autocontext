@@ -27,7 +27,7 @@ def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None):
     :param ilastik_cmd: path to run_ilastik.sh
     :param project: the ILP object of the project
     :param runs: number of runs of the autocontet loop
-    :param label_data_nr: number of dataset that contains the labels
+    :param label_data_nr: number of dataset that contains the labels (-1: use all datasets)
     :param weights: weights for the labels
     """
     assert isinstance(project, ILP)
@@ -50,17 +50,21 @@ def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None):
     keep_channels = [project.get_channel_count(i) for i in range(data_count)]
 
     # Read the labels from the first block and split them into parts, so not all labels are used in each loop.
-    blocks, block_slices = project.get_labels(label_data_nr)
     label_count = len(project.label_names)
-    scattered_labels = scatter_labels(blocks, label_count, runs, weights)
+    if label_data_nr == -1:
+        blocks_with_slicing = [(i, project.get_labels(i)) for i in xrange(project.labelsets_count)]
+    else:
+        blocks_with_slicing = [(label_data_nr, project.get_labels(label_data_nr))]
+    scattered_labels_list = [scatter_labels(blocks, label_count, runs, weights) for i, (blocks, block_slices) in blocks_with_slicing]
 
     # Do the autocontext loop.
     for i in range(runs):
         print col.Fore.GREEN + "- Running autocontext loop %d of %d -" % (i+1, runs) + col.Fore.RESET
 
         # Insert the subset of the labels into the project.
-        split_blocks = scattered_labels[i]
-        project.replace_labels(label_data_nr, split_blocks, block_slices)
+        for (k, (blocks, block_slices)), scattered_labels in zip(blocks_with_slicing, scattered_labels_list):
+            split_blocks = scattered_labels[i]
+            project.replace_labels(k, split_blocks, block_slices)
 
         # Retrain the project.
         print col.Fore.GREEN + "Retraining:" + col.Fore.RESET
@@ -77,7 +81,8 @@ def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None):
             project.merge_output_into_dataset(k, keep_channels[k])
 
     # Insert the original labels back into the project.
-    project.replace_labels(label_data_nr, blocks, block_slices)
+    for k, (blocks, block_slices) in blocks_with_slicing:
+        project.replace_labels(k, blocks, block_slices)
 
 
 def process_command_line():
@@ -92,8 +97,8 @@ def process_command_line():
                         help="output file")
     parser.add_argument("-n", "--nloops", type=int, default=3,
                         help="number of autocontext loop iterations")
-    parser.add_argument("-d", "--labeldataset", type=int, default=0,
-                        help="id of dataset in the ilp file that contains the labels")
+    parser.add_argument("-d", "--labeldataset", type=int, default=-1,
+                        help="id of dataset in the ilp file that contains the labels (-1: use all datasets)")
     parser.add_argument("-c", "--cache", type=str, default="cache",
                         help="name of the cache folder")
     parser.add_argument("--ilastik", type=str, required=True,
@@ -108,6 +113,8 @@ def process_command_line():
         args.outfile = file_path + "_out" + file_ext
     if not os.path.isfile(args.ilastik) or not os.access(args.ilastik, os.X_OK):
         raise Exception("%s is not an executable file" % args.ilastik)
+    if args.labeldataset < -1:
+        raise Exception("Wrong id of label dataset: %d" % args.d)
     return args
 
 

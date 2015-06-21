@@ -69,6 +69,14 @@ def label_names():
     return "/".join(label_names_list())
 
 
+def label_sets_list():
+    return ["PixelClassification", "LabelSets"]
+
+
+def label_sets():
+    return "/".join(label_sets_list())
+
+
 def labels_list(lane_number):
     lane_number = str(lane_number).zfill(3)
     return ["PixelClassification", "LabelSets", "labels" + lane_number]

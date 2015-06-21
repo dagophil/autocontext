@@ -127,6 +127,19 @@ class ILP(object):
         proj.close()
         return data_count
 
+    @property
+    def labelsets_count(self):
+        """Returns the number of label sets.
+
+        :return: number of label sets
+        :rtype: int
+        """
+        proj = h5py.File(self.project_filename, "r")
+        label_sets = eval_h5(proj, const.label_sets_list())
+        count = len(label_sets.keys())
+        proj.close()
+        return count
+
     def get_data_path(self, data_nr):
         """Returns the file path of the dataset.
 
@@ -510,7 +523,8 @@ class ILP(object):
             new_data = reshape_tzyxc(data)
 
             # Save the reshaped dataset.
-            output_path = self.get_cache_data_path(data_nr)
+            output_folder, output_filename = os.path.split(self.get_cache_data_path(data_nr))
+            output_path = os.path.join(output_folder, str(data_nr).zfill(4) + "_" + output_filename)
             if self.is_internal(data_nr):
                 output_key = self.get_dataset_id(data_nr)
             else:
