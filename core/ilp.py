@@ -4,6 +4,8 @@ import os
 import h5py
 import ilp_constants as const
 import block_yielder
+import sys
+import subprocess
 
 
 def eval_h5(proj, key_list):
@@ -547,9 +549,8 @@ class ILP(object):
 
         :param ilastik_cmd: path to the file run_ilastik.sh
         """
-        cmd = '"{}" --headless --project "{}" --retrain'.format(ilastik_cmd, self.project_filename)
-        os.system(cmd)
-        # TODO: Use subprocess.call instead of os.system.
+        cmd = [ilastik_cmd, "--headless", "--project=%s" % self.project_filename, "--retrain"]
+        subprocess.call(cmd, stdout=sys.stdout)
 
     def predict_all_datasets(self, ilastik_cmd):
         """Calls predict_dataset for each dataset in the project.
@@ -568,10 +569,9 @@ class ILP(object):
         """
         output_filename = self._get_output_data_path(data_nr)
         data_path_key = self.get_data_path_key(data_nr)
-        cmd = '"{}" --headless --project "{}" --output_format hdf5 --output_filename_format "{}" "{}"'\
-            .format(ilastik_cmd, self.project_filename, output_filename, data_path_key)
-        os.system(cmd)
-        # TODO: Use subprocess.call instead of os.system.
+        cmd = [ilastik_cmd, "--headless", "--project=%s" % self.project_filename, "--output_format=hdf5",
+               "--output_filename_format=%s" % output_filename, data_path_key]
+        subprocess.call(cmd, stdout=sys.stdout)
 
     def predict(self, ilastik_cmd, input_filename, output_filename):
         """Uses ilastik to predict the probabilities of the given file.
@@ -580,10 +580,9 @@ class ILP(object):
         :param input_filename: h5 path with key to input data (e. g. data/raw.h5/raw)
         :param output_filename: output filename
         """
-        cmd = '"{}" --headless --project "{}" --output_format hdf5 --output_filename_format "{}" "{}"'\
-            .format(ilastik_cmd, self.project_filename, output_filename, input_filename)
-        os.system(cmd)
-        # TODO: Use subprocess.call instead of os.system.
+        cmd = [ilastik_cmd, "--headless", "--project=%s" % self.project_filename, "--output_format=hdf5",
+               "--output_filename_format=%s" % output_filename, input_filename]
+        subprocess.call(cmd, stdout=sys.stdout)
 
     def merge_output_into_dataset(self, data_nr, n=0):
         """Merges the ilastik output in the dataset. The first n channels of the dataset are left unchanged.

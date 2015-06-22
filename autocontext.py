@@ -116,6 +116,9 @@ def process_command_line():
         raise Exception("%s is not an executable file" % args.ilastik)
     if args.labeldataset < -1:
         raise Exception("Wrong id of label dataset: %d" % args.d)
+    # if " " in args.infile or " " in args.outfile or " " in args.ilastik:
+    #     raise Exception("Please use file paths without spaces.")
+
     return args
 
 
