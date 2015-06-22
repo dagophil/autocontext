@@ -603,8 +603,8 @@ class ILP(object):
         # Check if the last dimension is used for the channels.
         if "axistags" not in h5_data.attrs or "axistags" not in h5_output_data.attrs:
             raise Exception("Dataset has no axistags.")
-        data_axistags = vigra.vigranumpycore.AxisTags.fromJSON(h5_data.attrs["axistags"])
-        output_data_axistags = vigra.vigranumpycore.AxisTags.fromJSON(h5_output_data.attrs["axistags"])
+        data_axistags = vigra.AxisTags.fromJSON(h5_data.attrs["axistags"])
+        output_data_axistags = vigra.AxisTags.fromJSON(h5_output_data.attrs["axistags"])
         if data_axistags != output_data_axistags:
             raise Exception("The merge datasets must have the same axistags.")
         if data_axistags[-1].key != "c":
@@ -616,11 +616,12 @@ class ILP(object):
 
         # Create the h5 file for the merged dataset.
         merge_shape = h5_data.shape[:-1] + (n+h5_output_data.shape[-1],)
-        max_chunk_shape = (1, 10, 10, 10, 1)
+        max_chunk_shape = (1, 100, 100, 100, 1)
         chunk_shape = tuple(min(a, b) for a, b in zip(merge_shape, max_chunk_shape))
         temp_filepath = filepath + "_TMP_"
         h5_merged_file = h5py.File(temp_filepath, "w")
-        h5_merged_file.create_dataset(h5key, shape=merge_shape, compression="lzf", chunks=chunk_shape)
+        h5_merged_file.create_dataset(h5key, shape=merge_shape, chunks=chunk_shape,
+                                      compression="lzf", dtype=h5_data.dtype)
         h5_merged = h5_merged_file[h5key]
         h5_merged.attrs["axistags"] = h5_data.attrs["axistags"]
 
