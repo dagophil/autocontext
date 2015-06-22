@@ -3,6 +3,7 @@ import numpy
 import os
 import h5py
 import ilp_constants as const
+import block_yielder
 
 
 def eval_h5(proj, key_list):
@@ -591,29 +592,57 @@ class ILP(object):
         :param data_nr: number of dataset
         :param n: number of channels that are left unchanged
         """
-        # Read the data.
-        data = self.get_data(data_nr)
-        output_data = self.get_output_data(data_nr)
+        # Get the data.
+        filepath = self.get_data_path(data_nr)
+        h5key = self.get_data_key(data_nr)
+        h5_data_file = h5py.File(filepath, "r")
+        h5_data = h5_data_file[h5key]
+        h5_output_data_file = h5py.File(self._get_output_data_path(data_nr), "r")
+        h5_output_data = h5_output_data_file[const.default_export_key()]
 
         # Check if the last dimension is used for the channels.
-        if not hasattr(data, "axistags") or not hasattr(output_data, "axistags"):
+        if "axistags" not in h5_data.attrs or "axistags" not in h5_output_data.attrs:
             raise Exception("Dataset has no axistags.")
-        if data.axistags[-1].key != "c" or output_data.axistags[-1].key != "c":
+        data_axistags = vigra.vigranumpycore.AxisTags.fromJSON(h5_data.attrs["axistags"])
+        output_data_axistags = vigra.vigranumpycore.AxisTags.fromJSON(h5_output_data.attrs["axistags"])
+        if data_axistags != output_data_axistags:
+            raise Exception("The merge datasets must have the same axistags.")
+        if data_axistags[-1].key != "c":
             raise Exception("Dataset has wrong axistags.")
 
         # Check that both datasets have the same shape, except for the number of channels.
-        if data.shape[:-1] != output_data.shape[:-1] or len(data.shape) != len(output_data.shape):
+        if h5_data.shape[:-1] != h5_output_data.shape[:-1] or len(h5_data.shape) != len(h5_output_data.shape):
             raise Exception("Both datasets must have the same shape, except for the number of channels.")
 
-        # Delete the all channels of data except for the first n ones.
-        data = data[..., 0:n]
-
-        # Merge the datasets together and preserve the axistags.
-        data = vigra.VigraArray(numpy.concatenate([data, output_data], -1), axistags=data.axistags)
-
-        # Save the result. (Do not use vigra.writeHDF5 directly on the existing file, since it creates memory holes.)
-        filepath = self.get_data_path(data_nr)
+        # Create the h5 file for the merged dataset.
+        merge_shape = h5_data.shape[:-1] + (n+h5_output_data.shape[-1],)
+        max_chunk_shape = (1, 10, 10, 10, 1)
+        chunk_shape = tuple(min(a, b) for a, b in zip(merge_shape, max_chunk_shape))
         temp_filepath = filepath + "_TMP_"
-        vigra.writeHDF5(data, temp_filepath, self.get_data_key(data_nr), compression="lzf")
+        h5_merged_file = h5py.File(temp_filepath, "w")
+        h5_merged_file.create_dataset(h5key, shape=merge_shape, compression="lzf", chunks=chunk_shape)
+        h5_merged = h5_merged_file[h5key]
+        h5_merged.attrs["axistags"] = h5_data.attrs["axistags"]
+
+        # Copy the raw data to the merge dataset.
+        data_merge_shape = h5_data.shape[:-1] + (n,)
+        data_blocking = block_yielder.Blocking(data_merge_shape, chunk_shape)
+        for block in data_blocking.yieldBlocks():
+            slicing = tuple(block.slicing)
+            h5_merged[slicing] = h5_data[slicing]
+
+        # Copy the output data to the merge dataset.
+        output_data_blocking = block_yielder.Blocking(h5_output_data.shape, chunk_shape)
+        for block in output_data_blocking.yieldBlocks():
+            slicing = tuple(block.slicing)
+            tmp_s = slicing[-1]
+            s = slice(tmp_s.start + n, tmp_s.stop + n, tmp_s.step)
+            merge_slicing = slicing[:-1] + (s,)
+            h5_merged[merge_slicing] = h5_output_data[slicing]
+
+        # Close the files and rename them.
+        h5_merged_file.close()
+        h5_data_file.close()
+        h5_output_data_file.close()
         os.remove(filepath)
         os.rename(temp_filepath, filepath)
