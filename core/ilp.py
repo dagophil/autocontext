@@ -632,13 +632,17 @@ class ILP(object):
             h5_merged[slicing] = h5_data[slicing]
 
         # Copy the output data to the merge dataset.
+        round_probs = h5_data.dtype.kind in "ui"  # round the probabilities if the raw data is of integer type
         output_data_blocking = block_yielder.Blocking(h5_output_data.shape, chunk_shape)
         for block in output_data_blocking.yieldBlocks():
             slicing = tuple(block.slicing)
             tmp_s = slicing[-1]
             s = slice(tmp_s.start + n, tmp_s.stop + n, tmp_s.step)
             merge_slicing = slicing[:-1] + (s,)
-            h5_merged[merge_slicing] = h5_output_data[slicing]
+            if round_probs:
+                h5_merged[merge_slicing] = h5_output_data[slicing] * numpy.iinfo(h5_data.dtype).max
+            else:
+                h5_merged[merge_slicing] = h5_output_data[slicing]
 
         # Close the files and rename them.
         h5_merged_file.close()
