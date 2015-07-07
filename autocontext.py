@@ -104,6 +104,8 @@ def process_command_line():
                         help="name of the cache folder")
     parser.add_argument("--ilastik", type=str, required=True,
                         help="path to the file run_ilastik.sh")
+    parser.add_argument("--seed", type=int, default=0,
+                        help="the random seed")
     args = parser.parse_args()
 
     # Check arguments for validity.
@@ -131,7 +133,7 @@ def main():
     args = process_command_line()
 
     # Initialize colorama and random seeds.
-    random.seed(0)
+    random.seed(args.seed)
     col.init()
 
     # Copy the project file.
