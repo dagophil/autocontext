@@ -16,7 +16,7 @@ import argparse
 import os
 
 
-def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None):
+def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None, predict_file=False):
     """Trains and predicts the ilastik project using the autocontext method.
 
     The parameter weights can be used to take different amounts of the labels in each loop run.
@@ -29,6 +29,7 @@ def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None):
     :param runs: number of runs of the autocontet loop
     :param label_data_nr: number of dataset that contains the labels (-1: use all datasets)
     :param weights: weights for the labels
+    :param predict_file: if this is True, the --predict_file option of ilastik is used
     """
     assert isinstance(project, ILP)
 
@@ -73,7 +74,7 @@ def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None):
 
         # Predict all datasets.
         print col.Fore.GREEN + "Predicting all datasets:" + col.Fore.RESET
-        project.predict_all_datasets(ilastik_cmd)
+        project.predict_all_datasets(ilastik_cmd, predict_file=predict_file)
 
         # Merge the probabilities back into the datasets.
         print col.Fore.GREEN + "Merging output back into datasets." + col.Fore.RESET
@@ -105,6 +106,8 @@ def process_command_line():
                         help="path to the file run_ilastik.sh")
     parser.add_argument("--seed", type=int, default=None,
                         help="the random seed")
+    parser.add_argument("--predict_file", action="store_true",
+                        help="add this flag if ilastik supports the --predict_file option")
     args = parser.parse_args()
 
     # Check arguments for validity.
@@ -163,7 +166,7 @@ def main():
     proj = ILP(args.outfile, args.cache)
 
     # Do the autocontext loop.
-    autocontext(args.ilastik, proj, args.nloops, args.labeldataset)
+    autocontext(args.ilastik, proj, args.nloops, args.labeldataset, predict_file=args.predict_file)
 
     return 0
 

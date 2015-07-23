@@ -552,16 +552,24 @@ class ILP(object):
         cmd = [ilastik_cmd, "--headless", "--project=%s" % self.project_filename, "--retrain"]
         subprocess.call(cmd, stdout=sys.stdout)
 
-    def predict_all_datasets(self, ilastik_cmd):
+    def predict_all_datasets(self, ilastik_cmd, predict_file=False):
         """Calls predict_dataset for each dataset in the project.
 
         :param ilastik_cmd: path to the file run_ilastik.sh
+        :param predict_file: if this is True, the --predict_file option of ilastik is used
         """
         output_filename = os.path.join(self.cache_folder, "{nickname}_probs.h5")
         cmd = [ilastik_cmd, "--headless", "--project=%s" % self.project_filename, "--output_format=hdf5",
                "--output_filename_format=%s" % output_filename]
-        for i in range(self.data_count):
-            cmd.append(self.get_data_path_key(i))
+        if predict_file:
+            pfile = os.path.join(self.cache_folder, "predict_file.txt")
+            with open(pfile, "w") as f:
+                for i in range(self.data_count):
+                    f.write(self.get_data_path_key(i) + "\n")
+            cmd.append("--predict_file=%s" % pfile)
+        else:
+            for i in range(self.data_count):
+                cmd.append(self.get_data_path_key(i))
         subprocess.call(cmd, stdout=sys.stdout)
 
     def predict_dataset(self, ilastik_cmd, data_nr):
