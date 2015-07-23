@@ -553,7 +553,7 @@ class ILP(object):
         subprocess.call(cmd, stdout=sys.stdout)
 
     def predict_all_datasets(self, ilastik_cmd, predict_file=False):
-        """Calls predict_dataset for each dataset in the project.
+        """Predicts the probabilities of all datasets in the project.
 
         :param ilastik_cmd: path to the file run_ilastik.sh
         :param predict_file: if this is True, the --predict_file option of ilastik is used
