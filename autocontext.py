@@ -72,9 +72,8 @@ def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None):
         project.retrain(ilastik_cmd)
 
         # Predict all datasets.
-        for k in range(data_count):
-            print col.Fore.GREEN + "Predicting dataset %d of %d:" % (k+1, data_count) + col.Fore.RESET
-            project.predict_dataset(ilastik_cmd, k)
+        print col.Fore.GREEN + "Predicting all datasets:" + col.Fore.RESET
+        project.predict_all_datasets(ilastik_cmd)
 
         # Merge the probabilities back into the datasets.
         print col.Fore.GREEN + "Merging output back into datasets." + col.Fore.RESET

@@ -557,8 +557,12 @@ class ILP(object):
 
         :param ilastik_cmd: path to the file run_ilastik.sh
         """
+        output_filename = os.path.join(self.cache_folder, "{nickname}_probs.h5")
+        cmd = [ilastik_cmd, "--headless", "--project=%s" % self.project_filename, "--output_format=hdf5",
+               "--output_filename_format=%s" % output_filename]
         for i in range(self.data_count):
-            self.predict_dataset(ilastik_cmd, i)
+            cmd.append(self.get_data_path_key(i))
+        subprocess.call(cmd, stdout=sys.stdout)
 
     def predict_dataset(self, ilastik_cmd, data_nr):
         """Uses ilastik to predict the probabilities of the dataset.
@@ -567,7 +571,7 @@ class ILP(object):
         :param ilastik_cmd: path to the file run_ilastik.sh
         :param data_nr: number of dataset
         """
-        output_filename = self._get_output_data_path(data_nr)
+        output_filename = os.path.join(self.cache_folder, "{nickname}_probs.h5")
         data_path_key = self.get_data_path_key(data_nr)
         cmd = [ilastik_cmd, "--headless", "--project=%s" % self.project_filename, "--output_format=hdf5",
                "--output_filename_format=%s" % output_filename, data_path_key]
