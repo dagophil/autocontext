@@ -1,7 +1,7 @@
 autocontext
 ===========
 
-Contains a python script to apply the autocontext method to an ilastik project.
+Contains a python script to apply the autocontext method to an ilastik project. Currently, this only works on hdf5 data.
 
 Example usage
 =============
