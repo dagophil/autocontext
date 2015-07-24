@@ -33,3 +33,7 @@ Python packages (all included in the python installation from ilastik):
 Other:
 * ilastik
 
+TODO
+====
+* Support ilastik projects with datasets other than hdf5.
+
