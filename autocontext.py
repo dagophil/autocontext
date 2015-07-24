@@ -108,6 +108,8 @@ def process_command_line():
                         help="the random seed")
     parser.add_argument("--predict_file", action="store_true",
                         help="add this flag if ilastik supports the --predict_file option")
+    parser.add_argument("--compression", default="lzf", type=str, choices=["lzf", "gzip", "szip", "None"],
+                        help="compression filter for the hdf5 files")
     args = parser.parse_args()
 
     # Check arguments for validity.
@@ -120,6 +122,8 @@ def process_command_line():
         raise Exception("%s is not an executable file" % args.ilastik)
     if args.labeldataset < -1:
         raise Exception("Wrong id of label dataset: %d" % args.d)
+    if args.compression == "None":
+        args.compression = None
 
     return args
 
@@ -163,7 +167,7 @@ def main():
             print "Cache folder not cleared."
 
     # Create an ILP object for the project.
-    proj = ILP(args.outfile, args.cache)
+    proj = ILP(args.outfile, args.cache, args.compression)
 
     # Do the autocontext loop.
     autocontext(args.ilastik, proj, args.nloops, args.labeldataset, predict_file=args.predict_file)

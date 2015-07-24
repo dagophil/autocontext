@@ -82,11 +82,12 @@ class ILP(object):
     # Use joblib to cache the accesses of the h5 project file.
     # https://pythonhosted.org/joblib/memory.html
 
-    def __init__(self, project_filename, output_folder):
+    def __init__(self, project_filename, output_folder, compression="lzf"):
         self._project_filename = project_filename
         self._cache_folder = output_folder
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
+        self._compression = compression
         # TODO:
         # Maybe check if the project exists and can be opened.
 
@@ -532,7 +533,7 @@ class ILP(object):
                 output_key = self.get_dataset_id(data_nr)
             else:
                 output_key = self.get_data_key(data_nr)
-            vigra.writeHDF5(new_data, output_path, output_key, compression="lzf")
+            vigra.writeHDF5(new_data, output_path, output_key, compression=self._compression)
 
             # Update the project file.
             self.set_data_path_key(data_nr, output_path, output_key)
@@ -632,7 +633,7 @@ class ILP(object):
         temp_filepath = filepath + "_TMP_"
         h5_merged_file = h5py.File(temp_filepath, "w")
         h5_merged_file.create_dataset(h5key, shape=merge_shape, chunks=chunk_shape,
-                                      compression="lzf", dtype=h5_data.dtype)
+                                      compression=self._compression, dtype=h5_data.dtype)
         h5_merged = h5_merged_file[h5key]
         h5_merged.attrs["axistags"] = h5_data.attrs["axistags"]
 
