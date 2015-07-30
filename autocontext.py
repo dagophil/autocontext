@@ -292,6 +292,9 @@ def process_command_line():
             raise Exception("Tried to use batch prediction without --files.")
         if not os.path.isdir(args.batch_predict):
             raise Exception("%s is not a directory." % args.batch_predict)
+        for filename in args.files:
+            if "*" in filename:
+                raise Exception("The expansion with * is not implemented yet.")
 
         # Remove the --headless, --project and --output_internal_path arguments.
         ilastik_parser = argparse.ArgumentParser()
