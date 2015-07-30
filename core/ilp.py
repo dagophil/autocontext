@@ -6,6 +6,7 @@ import ilp_constants as const
 import block_yielder
 import sys
 import subprocess
+import shutil
 
 
 def eval_h5(proj, key_list):
@@ -420,6 +421,18 @@ class ILP(object):
         proj.close()
         return blocks, block_slices
 
+    def remove_labels(self, data_nr=None):
+        """Remove the label blocks of the given dataset from the project.
+        """
+        if data_nr is None:
+            for i in xrange(self.data_count):
+                self.remove_labels(i)
+        else:
+            proj = h5py.File(self.project_filename, "r+")
+            for i in range(self._label_block_count(data_nr)):
+                del_from_h5(proj, const.label_blocks_list(data_nr, i))
+            proj.close()
+
     @property
     def label_names(self):
         """Returns the names of the labels of the dataset.
@@ -443,16 +456,14 @@ class ILP(object):
             if len(blocks) != self._label_block_count(data_nr):
                 raise Exception("Wrong number of label blocks to be inserted.")
 
-        proj = h5py.File(self.project_filename, "r+")
         if delete_old_blocks:
-            for i in range(self._label_block_count(data_nr)):
-                del_from_h5(proj, const.label_blocks_list(data_nr, i))
+            self.remove_labels(data_nr)
 
+        proj = h5py.File(self.project_filename, "r+")
         for i in range(len(blocks)):
             vigra.writeHDF5(blocks[i], self.project_filename, const.label_blocks(data_nr, i))
             h5_blocks = eval_h5(proj, const.label_blocks_list(data_nr, i))
             h5_blocks.attrs['blockSlice'] = block_slices[i]
-
         proj.close()
 
     def _reshape_labels(self, data_nr, old_axisorder, new_axisorder):
@@ -663,3 +674,23 @@ class ILP(object):
         h5_output_data_file.close()
         os.remove(filepath)
         os.rename(temp_filepath, filepath)
+
+    def save(self, filename, remove_labels=False):
+        """Save the project to the given file and adjust the relative filepaths in the copy.
+
+        :param filename: the filename
+        :param remove_labels: if True, the stored labels are removed from the copy
+        """
+        # Copy the project.
+        shutil.copyfile(self.project_filename, filename)
+
+        # Adjust the relative filepaths.
+        p = ILP(filename, self.cache_folder)
+        for i in xrange(self.data_count):
+            data_path = self.get_data_path(i)
+            data_key = self.get_data_key(i)
+            p.set_data_path_key(i, data_path, data_key)
+
+        # Remove the labels.
+        if remove_labels:
+            p.remove_labels()

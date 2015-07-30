@@ -72,6 +72,12 @@ def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None, predict
         print col.Fore.GREEN + "Retraining:" + col.Fore.RESET
         project.retrain(ilastik_cmd)
 
+        # Save the project so it can be used in the batch prediction.
+        filename = "rf_" + str(i).zfill(len(str(runs-1))) + ".ilp"
+        filename = os.path.join(project.cache_folder, filename)
+        print col.Fore.GREEN + "Saving the project to " + filename + col.Fore.RESET
+        project.save(filename, remove_labels=True)
+
         # Predict all datasets.
         print col.Fore.GREEN + "Predicting all datasets:" + col.Fore.RESET
         project.predict_all_datasets(ilastik_cmd, predict_file=predict_file)
