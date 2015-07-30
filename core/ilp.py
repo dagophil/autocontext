@@ -76,6 +76,76 @@ def reshape_tzyxc(data):
     return data.reshape(data_shape, axistags=axistags)
 
 
+def merge_datasets(data0_path, data0_key, data1_path, data1_key, n=0, compression=None):
+    """Merge data1 into data0, but keep the first n channels of data0. It is assumed, that the channels are in the last
+    dimension.
+
+    :param data0_path: path to first h5 file
+    :param data0_key: h5 key of first file
+    :param data1_path: path to second h5 file
+    :param data1_key: h5 key of second file
+    :param n: number of channels to keep
+    :param compression: the compression
+    """
+    # Get the data.
+    h5_data_file = h5py.File(data0_path, "r")
+    h5_data = h5_data_file[data0_key]
+    h5_output_data_file = h5py.File(data1_path, "r")
+    h5_output_data = h5_output_data_file[data1_key]
+
+    # Check if the last dimension is used for the channels.
+    if "axistags" not in h5_data.attrs or "axistags" not in h5_output_data.attrs:
+        raise Exception("Dataset has no axistags.")
+    data_axistags = vigra.AxisTags.fromJSON(h5_data.attrs["axistags"])
+    output_data_axistags = vigra.AxisTags.fromJSON(h5_output_data.attrs["axistags"])
+    if data_axistags != output_data_axistags:
+        raise Exception("The merge datasets must have the same axistags.")
+    if data_axistags[-1].key != "c":
+        raise Exception("Dataset has wrong axistags.")
+
+    # Check that both datasets have the same shape, except for the number of channels.
+    if h5_data.shape[:-1] != h5_output_data.shape[:-1] or len(h5_data.shape) != len(h5_output_data.shape):
+        raise Exception("Both datasets must have the same shape, except for the number of channels.")
+
+    # Create the h5 file for the merged dataset.
+    merge_shape = h5_data.shape[:-1] + (n+h5_output_data.shape[-1],)
+    max_chunk_shape = (1, 100, 100, 100, 1)
+    chunk_shape = tuple(min(a, b) for a, b in zip(merge_shape, max_chunk_shape))
+    temp_filepath = data0_path + "_TMP_"
+    h5_merged_file = h5py.File(temp_filepath, "w")
+    h5_merged_file.create_dataset(data0_key, shape=merge_shape, chunks=chunk_shape,
+                                  compression=compression, dtype=h5_data.dtype)
+    h5_merged = h5_merged_file[data0_key]
+    h5_merged.attrs["axistags"] = h5_data.attrs["axistags"]
+
+    # Copy the raw data to the merge dataset.
+    data_merge_shape = h5_data.shape[:-1] + (n,)
+    data_blocking = block_yielder.Blocking(data_merge_shape, chunk_shape)
+    for block in data_blocking.yieldBlocks():
+        slicing = tuple(block.slicing)
+        h5_merged[slicing] = h5_data[slicing]
+
+    # Copy the output data to the merge dataset.
+    round_probs = h5_data.dtype.kind in "ui"  # round the probabilities if the raw data is of integer type
+    output_data_blocking = block_yielder.Blocking(h5_output_data.shape, chunk_shape)
+    for block in output_data_blocking.yieldBlocks():
+        slicing = tuple(block.slicing)
+        tmp_s = slicing[-1]
+        s = slice(tmp_s.start + n, tmp_s.stop + n, tmp_s.step)
+        merge_slicing = slicing[:-1] + (s,)
+        if round_probs:
+            h5_merged[merge_slicing] = h5_output_data[slicing] * numpy.iinfo(h5_data.dtype).max
+        else:
+            h5_merged[merge_slicing] = h5_output_data[slicing]
+
+    # Close the files and rename them.
+    h5_merged_file.close()
+    h5_data_file.close()
+    h5_output_data_file.close()
+    os.remove(data0_path)
+    os.rename(temp_filepath, data0_path)
+
+
 class ILP(object):
     """Provides basic interactions with ilp files.
     """
@@ -615,65 +685,11 @@ class ILP(object):
         :param data_nr: number of dataset
         :param n: number of channels that are left unchanged
         """
-        # Get the data.
         filepath = self.get_data_path(data_nr)
         h5key = self.get_data_key(data_nr)
-        h5_data_file = h5py.File(filepath, "r")
-        h5_data = h5_data_file[h5key]
-        h5_output_data_file = h5py.File(self._get_output_data_path(data_nr), "r")
-        h5_output_data = h5_output_data_file[const.default_export_key()]
-
-        # Check if the last dimension is used for the channels.
-        if "axistags" not in h5_data.attrs or "axistags" not in h5_output_data.attrs:
-            raise Exception("Dataset has no axistags.")
-        data_axistags = vigra.AxisTags.fromJSON(h5_data.attrs["axistags"])
-        output_data_axistags = vigra.AxisTags.fromJSON(h5_output_data.attrs["axistags"])
-        if data_axistags != output_data_axistags:
-            raise Exception("The merge datasets must have the same axistags.")
-        if data_axistags[-1].key != "c":
-            raise Exception("Dataset has wrong axistags.")
-
-        # Check that both datasets have the same shape, except for the number of channels.
-        if h5_data.shape[:-1] != h5_output_data.shape[:-1] or len(h5_data.shape) != len(h5_output_data.shape):
-            raise Exception("Both datasets must have the same shape, except for the number of channels.")
-
-        # Create the h5 file for the merged dataset.
-        merge_shape = h5_data.shape[:-1] + (n+h5_output_data.shape[-1],)
-        max_chunk_shape = (1, 100, 100, 100, 1)
-        chunk_shape = tuple(min(a, b) for a, b in zip(merge_shape, max_chunk_shape))
-        temp_filepath = filepath + "_TMP_"
-        h5_merged_file = h5py.File(temp_filepath, "w")
-        h5_merged_file.create_dataset(h5key, shape=merge_shape, chunks=chunk_shape,
-                                      compression=self._compression, dtype=h5_data.dtype)
-        h5_merged = h5_merged_file[h5key]
-        h5_merged.attrs["axistags"] = h5_data.attrs["axistags"]
-
-        # Copy the raw data to the merge dataset.
-        data_merge_shape = h5_data.shape[:-1] + (n,)
-        data_blocking = block_yielder.Blocking(data_merge_shape, chunk_shape)
-        for block in data_blocking.yieldBlocks():
-            slicing = tuple(block.slicing)
-            h5_merged[slicing] = h5_data[slicing]
-
-        # Copy the output data to the merge dataset.
-        round_probs = h5_data.dtype.kind in "ui"  # round the probabilities if the raw data is of integer type
-        output_data_blocking = block_yielder.Blocking(h5_output_data.shape, chunk_shape)
-        for block in output_data_blocking.yieldBlocks():
-            slicing = tuple(block.slicing)
-            tmp_s = slicing[-1]
-            s = slice(tmp_s.start + n, tmp_s.stop + n, tmp_s.step)
-            merge_slicing = slicing[:-1] + (s,)
-            if round_probs:
-                h5_merged[merge_slicing] = h5_output_data[slicing] * numpy.iinfo(h5_data.dtype).max
-            else:
-                h5_merged[merge_slicing] = h5_output_data[slicing]
-
-        # Close the files and rename them.
-        h5_merged_file.close()
-        h5_data_file.close()
-        h5_output_data_file.close()
-        os.remove(filepath)
-        os.rename(temp_filepath, filepath)
+        filepath_out = self._get_output_data_path(data_nr)
+        h5key_out = const.default_export_key()
+        merge_datasets(filepath, h5key, filepath_out, h5key_out, n=n, compression=self._compression)
 
     def save(self, filename, remove_labels=False):
         """Save the project to the given file and adjust the relative filepaths in the copy.

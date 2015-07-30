@@ -12,12 +12,16 @@ import argparse
 import os
 import random
 import shutil
+import subprocess
 import sys
 
 import colorama as col
+import vigra
 
 from core.ilp import ILP
+from core.ilp import merge_datasets, reshape_tzyxc
 from core.labels import scatter_labels
+from core.ilp_constants import default_export_key
 
 
 def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None, predict_file=False):
@@ -65,7 +69,7 @@ def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None, predict
 
     # Do the autocontext loop.
     for i in range(runs):
-        print col.Fore.GREEN + "- Running autocontext loop %d of %d -" % (i+1, runs) + col.Fore.RESET
+        print col.Fore.GREEN + "- Running autocontext training round %d of %d -" % (i+1, runs) + col.Fore.RESET
 
         # Insert the subset of the labels into the project.
         for (k, (blocks, block_slices)), scattered_labels in zip(blocks_with_slicing, scattered_labels_list):
@@ -96,14 +100,107 @@ def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None, predict
         project.replace_labels(k, blocks, block_slices)
 
 
+def autocontext_forests(dirname):
+    """Open the ilastik random forests from the given trained autocontext.
+
+    :param dirname: autocontext cache folder
+    :return: list with ilastik random forest filenames
+    """
+    rf_files = []
+    for filename in os.listdir(dirname):
+        fullname = os.path.join(dirname, filename)
+        if os.path.isfile(fullname) and len(filename) >= 8:
+            base, middle, end = filename[:3], filename[3:-4], filename[-4:]
+            if base == "rf_" and end ==".ilp":
+                rf_files.append((int(middle), fullname))
+    rf_files = sorted(rf_files)
+    rf_indices, rf_files = zip(*rf_files)
+    assert rf_indices == tuple(xrange(len(rf_files)))  # check that there are only the indices 0, 1, 2, ... .
+    return rf_files
+
+
 def batch_predict(args, ilastik_args):
     """Do the batch prediction.
 
     :param args: command line arguments
     :param ilastik_args: additional ilastik arguments
     """
-    print "doing batch prediction"
-    raise NotImplementedError
+    # Create the folder for the intermediate results.
+    if not os.path.isdir(args.cache):
+        os.makedirs(args.cache)
+
+    # Find the random forest files.
+    rf_files = autocontext_forests(args.batch_predict)
+    n = len(rf_files)
+
+    # Get the output format arguments.
+    default_output_format = "hdf5"
+    default_output_filename_format = os.path.join(args.cache, "{nickname}_probs.h5")
+    ilastik_parser = argparse.ArgumentParser()
+    ilastik_parser.add_argument("--output_format", type=str, default=default_output_format)
+    ilastik_parser.add_argument("--output_filename_format", type=str, default=default_output_filename_format)
+    format_args, ilastik_args = ilastik_parser.parse_known_args(ilastik_args)
+    output_formats = [default_output_format] * (n-1) + [format_args.output_format]
+    output_filename_formats = [default_output_filename_format] * (n-1) + [format_args.output_filename_format]
+
+    # Reshape the data to tzyxc and move it to the cache folder.
+    outfiles = []
+    keep_channels = None
+    for i in xrange(len(args.files)):
+        # Read the data and attach axistags.
+        filename = args.files[i]
+        data_key = os.path.basename(filename)
+        data_path = filename[:-len(data_key)-1]
+        data = vigra.readHDF5(data_path, data_key)
+        if not hasattr(data, "axistags"):
+            default_tags = {1: "x",
+                            2: "xy",
+                            3: "xyz",
+                            4: "xyzc",
+                            5: "txyzc"}
+            data = vigra.VigraArray(data, axistags=vigra.defaultAxistags(default_tags[len(data.shape)]),
+                                    dtype=data.dtype)
+        new_data = reshape_tzyxc(data)
+        if i == 0:
+            keep_channels = new_data.shape[-1]
+
+        # Save the reshaped dataset.
+        output_filename = os.path.split(data_path)[1]
+        output_filename = os.path.join(args.cache, output_filename)
+        vigra.writeHDF5(new_data, output_filename, data_key, compression=args.compression)
+        args.files[i] = output_filename + "/" + data_key
+        outfiles.append(os.path.splitext(output_filename)[0] + "_probs.h5")
+    assert keep_channels > 0
+
+    # Run the batch prediction.
+    for i in xrange(n):
+        rf_file = rf_files[i]
+        output_format = output_formats[i]
+        output_filename_format = output_filename_formats[i]
+
+        filename_key = os.path.basename(args.files[0])
+        filename_path = args.files[0][:-len(filename_key)-1]
+
+        # Quick hack to prevent the ilastik error "wrong number of channels".
+        p = ILP(rf_file, args.cache, compression=args.compression)
+        p.set_data_path_key(0, filename_path, filename_key)
+
+        # Call ilastik to run the batch prediction.
+        cmd = [args.ilastik,
+               "--headless",
+               "--project=%s" % rf_file,
+               "--output_format=%s" % output_format,
+               "--output_filename_format=%s" % output_filename_format]
+        cmd += args.files
+        print col.Fore.GREEN + "- Running autocontext batch prediction round %d of %d -" % (i+1, n) + col.Fore.RESET
+        subprocess.call(cmd, stdout=sys.stdout)
+
+        # Merge the probabilities back to the original file.
+        for filename, filename_out in zip(args.files, outfiles):
+            filename_key = os.path.basename(filename)
+            filename_path = filename[:-len(filename_key)-1]
+            merge_datasets(filename_path, filename_key, filename_out, default_export_key(), n=keep_channels,
+                           compression=args.compression)
 
 
 def train(args):
@@ -116,24 +213,6 @@ def train(args):
     if os.path.isfile(args.outfile):
         os.remove(args.outfile)
     shutil.copyfile(args.train, args.outfile)
-
-    # Clear the cache folder.
-    if os.path.isdir(args.cache):
-        print "The cache folder", os.path.abspath(args.cache), "already exists."
-        clear_cache = raw_input("Clear cache folder? [y|n] : ")
-        if clear_cache in ["y", "Y"]:
-            for f in os.listdir(args.cache):
-                f_path = os.path.join(args.cache, f)
-                try:
-                    if os.path.isfile(f_path):
-                        os.remove(f_path)
-                    elif os.path.isdir(f_path):
-                        shutil.rmtree(f_path)
-                except Exception, e:
-                    print e
-            print "Cleared cache folder."
-        else:
-            print "Cache folder not cleared."
 
     # Create an ILP object for the project.
     proj = ILP(args.outfile, args.cache, args.compression)
@@ -214,10 +293,11 @@ def process_command_line():
         if not os.path.isdir(args.batch_predict):
             raise Exception("%s is not a directory." % args.batch_predict)
 
-        # Remove the --headless and --project arguments.
+        # Remove the --headless, --project and --output_internal_path arguments.
         ilastik_parser = argparse.ArgumentParser()
         ilastik_parser.add_argument("--headless", action="store_true")
         ilastik_parser.add_argument("--project", type=str)
+        ilastik_parser.add_argument("--output_internal_path", type=str)
         ilastik_args = ilastik_parser.parse_known_args(ilastik_args)[1]
 
     return args, ilastik_args
@@ -233,6 +313,24 @@ def main():
     # Initialize colorama and random seeds.
     random.seed(args.seed)
     col.init()
+
+    # Clear the cache folder.
+    if os.path.isdir(args.cache):
+        print "The cache folder", os.path.abspath(args.cache), "already exists."
+        clear_cache = raw_input("Clear cache folder? [y|n] : ")
+        if clear_cache in ["y", "Y"]:
+            for f in os.listdir(args.cache):
+                f_path = os.path.join(args.cache, f)
+                try:
+                    if os.path.isfile(f_path):
+                        os.remove(f_path)
+                    elif os.path.isdir(f_path):
+                        shutil.rmtree(f_path)
+                except Exception, e:
+                    print e
+            print "Cleared cache folder."
+        else:
+            print "Cache folder not cleared."
 
     if args.train:
         # Do the autocontext training.
