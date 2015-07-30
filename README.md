@@ -31,7 +31,7 @@ Please keep in mind, that you need a cache folder for the batch prediction, too.
 cache folders for training and batch prediction.
 
 
-### Coming soon:
+#### Coming soon:
 
 You can also use the placeholder * to predict a whole folder of files. In order to prevent the automatic command line
 expansion, you may have to enclose the filename in quotes:
