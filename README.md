@@ -16,6 +16,7 @@ Now you can use the autocontext script. Open a terminal and run a command like t
 
 * `python autocontext.py --help`
 * `python autocontext.py --train myproject.ilp --ilastik /usr/local/ilastik/run_ilastik.sh`
+* `python autocontext.py --train myproject.ilp --ilastik /usr/local/ilastik/run_ilastik.sh --cache training/cache`
 * `python autocontext.py --train infile.ilp -o outfile.ilp --ilastik /usr/local/ilastik/run_ilastik.sh`
 
 
