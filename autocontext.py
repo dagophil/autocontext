@@ -8,12 +8,14 @@ How to use:
 * Save project and exit ilastik.
 * Run this script (parameters: see command line arguments from argparse) or use the autocontext function.
 """
-import sys
 import argparse
 import os
-import shutil
 import random
+import shutil
+import sys
+
 import colorama as col
+
 from core.ilp import ILP
 from core.labels import scatter_labels
 
