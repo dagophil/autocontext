@@ -27,7 +27,7 @@ on the files `to_predict0.h5/raw` and `to_predict1.h5/raw`. First, you have to t
 trained autocontext is saved in the cache folder, say this is the folder `training/cache`. Now you can call the batch
 prediction:
 
-    python autocontext.py --batch_predict training/cache --ilastik /usr/local/ilastik/run_ilastik.sh --cache prediction/cache --files to_predict0.h5/raw to_predict1.h5/raw
+* `python autocontext.py --batch_predict training/cache --ilastik /usr/local/ilastik/run_ilastik.sh --cache prediction/cache --files to_predict0.h5/raw to_predict1.h5/raw`
 
 Please keep in mind, that you need a cache folder for the batch prediction, too. It may be a good idea to use different
 cache folders for training and batch prediction.
@@ -39,7 +39,7 @@ All command line arguments that are not used by autocontext are forwarded to ila
 (http://ilastik.org/documentation/pixelclassification/headless.html)
 for a full list of ilastik options. Example:
 
-    python autocontext.py --batch_predict training/cache --ilastik /usr/local/ilastik/run_ilastik.sh --cache prediction/cache --files to_predict0.h5/raw to_predict1.h5/raw --output_filename_format {nickname}_Probabilities.h5 --output_internal_path my_personal_export_key
+* `python autocontext.py --batch_predict training/cache --ilastik /usr/local/ilastik/run_ilastik.sh --cache prediction/cache --files to_predict0.h5/raw to_predict1.h5/raw --output_filename_format {nickname}_Probabilities.h5 --output_internal_path my_personal_export_key`
 
 There are a few exceptions:
 
