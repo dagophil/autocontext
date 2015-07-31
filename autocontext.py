@@ -203,7 +203,16 @@ def batch_predict(args, ilastik_args):
                "--output_format=%s" % output_format,
                "--output_filename_format=%s" % output_filename_format,
                "--output_internal_path=%s" % output_internal_path]
-        cmd += args.files
+
+        if args.predict_file:
+            pfile = os.path.join(args.cache, "predict_file.txt")
+            with open(pfile, "w") as f:
+                for pf in args.files:
+                    f.write(os.path.abspath(pf) + "\n")
+            cmd.append("--predict_file=%s" % pfile)
+        else:
+            cmd += args.files
+
         print col.Fore.GREEN + "- Running autocontext batch prediction round %d of %d -" % (i+1, n) + col.Fore.RESET
         subprocess.call(cmd, stdout=sys.stdout)
 

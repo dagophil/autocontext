@@ -23,22 +23,29 @@ Now you can use the autocontext script. Open a terminal and run a command like t
 ## Example usage (batch prediction)
 
 You can use the autocontext in combination with the ilastik batch prediction. Lets say you want to use batch prediction
-on the files `to_predict0.h5/raw` and `to_predict1.h5/raw`. First, you have to train the autocontext (see above). The trained 
-autocontext is saved in the cache folder, say this is the folder `training/cache`. Now you can call the batch prediction:
+on the files `to_predict0.h5/raw` and `to_predict1.h5/raw`. First, you have to train the autocontext (see above). The
+trained autocontext is saved in the cache folder, say this is the folder `training/cache`. Now you can call the batch
+prediction:
 
-* `python autocontext.py --batch_predict training/cache --ilastik /usr/local/ilastik/run_ilastik.sh --cache prediction/cache --files to_predict0.h5/raw to_predict1.h5/raw`
+    python autocontext.py --batch_predict training/cache --ilastik /usr/local/ilastik/run_ilastik.sh --cache prediction/cache --files to_predict0.h5/raw to_predict1.h5/raw
 
 Please keep in mind, that you need a cache folder for the batch prediction, too. It may be a good idea to use different
 cache folders for training and batch prediction.
 
+#### Forwarding arguments to ilastik
 
-#### Coming soon:
+All command line arguments that are not used by autocontext are forwarded to ilastik. See
+[http://ilastik.org/documentation/pixelclassification/headless.html]
+(http://ilastik.org/documentation/pixelclassification/headless.html)
+for a full list of ilastik options. Example:
 
-You can also use the placeholder * to predict a whole folder of files. In order to prevent the automatic command line
-expansion, you may have to enclose the filename in quotes:
+    python autocontext.py --batch_predict training/cache --ilastik /usr/local/ilastik/run_ilastik.sh --cache prediction/cache --files to_predict0.h5/raw to_predict1.h5/raw --output_filename_format {nickname}_Probabilities.h5 --output_internal_path my_personal_export_key
 
-* `python autocontext.py --batch_predict training/cache --ilastik /usr/local/ilastik/run_ilastik.sh --files "*.h5/raw"`
+There are a few exceptions:
 
+* The options `--headless` and `--project` are ignored, since they are predefined by the autocontext.
+* Since you only need the ilastik results from the last autocontext iteration, the options `--output_format`,
+  `--output_filename_format`, `--output_internal_path` are only taken into account in the last iteration.
 
 ## Prevent OSError in autocontext iteration
 
