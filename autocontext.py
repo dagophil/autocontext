@@ -149,9 +149,15 @@ def batch_predict(args, ilastik_args):
     for i in xrange(len(args.files)):
         # Read the data and attach axistags.
         filename = args.files[i]
-        data_key = os.path.basename(filename)
-        data_path = filename[:-len(data_key)-1]
-        data = vigra.readHDF5(data_path, data_key)
+        if ".h5/" in filename:
+            data_key = os.path.basename(filename)
+            data_path = filename[:-len(data_key)-1]
+            data = vigra.readHDF5(data_path, data_key)
+        else:
+            data_key = default_export_key()
+            data_path_base, data_path_ext = os.path.splitext(filename)
+            data_path = data_path_base + ".h5"
+            data = vigra.readImage(filename)
         if not hasattr(data, "axistags"):
             default_tags = {1: "x",
                             2: "xy",
@@ -161,8 +167,10 @@ def batch_predict(args, ilastik_args):
             data = vigra.VigraArray(data, axistags=vigra.defaultAxistags(default_tags[len(data.shape)]),
                                     dtype=data.dtype)
         new_data = reshape_tzyxc(data)
+
         if i == 0:
-            keep_channels = new_data.shape[-1]
+            c_index = new_data.axistags.index("c")
+            keep_channels = new_data.shape[c_index]
 
         # Save the reshaped dataset.
         output_filename = os.path.split(data_path)[1]

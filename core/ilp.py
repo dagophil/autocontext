@@ -227,8 +227,10 @@ class ILP(object):
         else:
             h5_key = const.filepath(data_nr)
             data_path = vigra.readHDF5(self.project_filename, h5_key)
-            data_key = os.path.basename(data_path)
-            data_path = os.path.join(self.project_dir, data_path[:-len(data_key)-1])
+            if self._datatype(data_nr) == "hdf5":
+                data_key = os.path.basename(data_path)
+                data_path = data_path[:-len(data_key)-1]
+            data_path = os.path.join(self.project_dir, data_path)
             return data_path
 
     def get_data_key(self, data_nr):
@@ -242,6 +244,8 @@ class ILP(object):
             dataset_id = self.get_dataset_id(data_nr)
             data_key = const.localdata(dataset_id)
         else:
+            if self._datatype(data_nr) != "hdf5":
+                return const.default_export_key()
             h5_key = const.filepath(data_nr)
             data_path = vigra.readHDF5(self.project_filename, h5_key)
             data_key = os.path.basename(data_path)
@@ -324,13 +328,34 @@ class ILP(object):
         else:
             vigra.writeHDF5("FileSystem", self.project_filename, h5_key)
 
+    def _datatype(self, data_nr):
+        """Returns the data type of the given data. Valid data types are: "hdf5", "tiff", "bmp". If none of these types
+        are present, None is returned.
+
+        :param data_nr: number of dataset
+        :return: data type
+        """
+        h5_key = const.filepath(data_nr)
+        data_path = vigra.readHDF5(self.project_filename, h5_key)
+        if ".h5/" in data_path.lower():
+            return "hdf5"
+        elif data_path[-4:].lower() == ".tif" or data_path[-5:].lower() == ".tiff":
+            return "tiff"
+        elif data_path[-4:].lower() == ".bmp":
+            return "bmp"
+        else:
+            return None
+
     def get_data(self, data_nr):
         """Returns the dataset.
 
         :param data_nr: number of dataset
         :return: the dataset
         """
-        return vigra.readHDF5(self.get_data_path(data_nr), self.get_data_key(data_nr))
+        if self._datatype(data_nr) == "hdf5":
+            return vigra.readHDF5(self.get_data_path(data_nr), self.get_data_key(data_nr))
+        else:
+            return vigra.readImage(self.get_data_path(data_nr))
 
     def get_output_data(self, data_nr):
         """Returns the dataset that was produced by ilastik.
@@ -351,6 +376,9 @@ class ILP(object):
             return os.path.join(self.cache_folder, self.get_dataset_id(data_nr) + ".h5")
         else:
             data_path = os.path.basename(self.get_data_path(data_nr))
+            if self._datatype(data_nr) != "hdf5":
+                data_base, data_ext = os.path.splitext(data_path)
+                data_path = data_base + ".h5"
             return os.path.join(self.cache_folder, data_path)
 
     def _get_output_data_path(self, data_nr):
