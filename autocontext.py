@@ -9,6 +9,7 @@ How to use:
 * Run this script (parameters: see command line arguments from argparse) or use the autocontext function.
 """
 import argparse
+import glob
 import os
 import random
 import shutil
@@ -282,6 +283,15 @@ def process_command_line():
     # Do the parsing.
     args, ilastik_args = parser.parse_known_args()
 
+    # Expand the filenames.
+    args.ilastik = os.path.expanduser(args.ilastik)
+    args.cache = os.path.expanduser(args.cache)
+    if args.train is not None:
+        args.train = os.path.expanduser(args.train)
+    args.outfile = os.path.expanduser(args.outfile)
+    if args.batch_predict is not None:
+        args.batch_predict = os.path.expanduser(args.batch_predict)
+
     # Check if ilastik is an executable.
     if not os.path.isfile(args.ilastik) or not os.access(args.ilastik, os.X_OK):
         raise Exception("%s is not an executable file." % args.ilastik)
@@ -316,9 +326,23 @@ def process_command_line():
             raise Exception("Tried to use batch prediction without --files.")
         if not os.path.isdir(args.batch_predict):
             raise Exception("%s is not a directory." % args.batch_predict)
-        for filename in args.files:
+
+        # Expand filenames that include *.
+        expanded_files = [os.path.expanduser(f) for f in args.files]
+        args.files = []
+        for filename in expanded_files:
             if "*" in filename:
-                raise Exception("The expansion with * is not implemented yet.")
+                if ".h5/" in filename:
+                    i = filename.index(".h5")
+                    filename_path = filename[:i+3]
+                    filename_key = filename[i+4:]
+                    to_append = glob.glob(filename_path)
+                    to_append = [f + "/" + filename_key for f in to_append]
+                    args.files += to_append
+                else:
+                    args.files += glob.glob(filename)
+            else:
+                args.files.append(filename)
 
         # Remove the --headless, --project and --output_internal_path arguments.
         ilastik_parser = argparse.ArgumentParser()
