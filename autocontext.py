@@ -310,6 +310,8 @@ def process_command_line():
 
     # Check if the batch prediction arguments are valid.
     if args.batch_predict:
+        if os.path.normpath(os.path.abspath(args.batch_predict)) == os.path.normpath(os.path.abspath(args.cache)):
+            raise Exception("The --batch_predict and --cache directories must be different.")
         if args.files is None:
             raise Exception("Tried to use batch prediction without --files.")
         if not os.path.isdir(args.batch_predict):
