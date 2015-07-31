@@ -1,6 +1,7 @@
 # autocontext
 
-Contains a python script to apply the autocontext method to an ilastik project. Currently, this only works on hdf5 data.
+Contains a python script to apply the autocontext method to an ilastik project. Currently, this only works on hdf5, tiff
+and bmp data.
 
 
 ## Example usage (training)
@@ -70,5 +71,5 @@ Other:
 
 ## TODO
 
-* Support ilastik projects with datasets other than hdf5.
+* Support ilastik projects with datasets other than hdf5, tiff or bmp.
 
