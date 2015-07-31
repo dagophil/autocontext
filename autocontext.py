@@ -139,9 +139,11 @@ def batch_predict(args, ilastik_args):
     ilastik_parser = argparse.ArgumentParser()
     ilastik_parser.add_argument("--output_format", type=str, default=default_output_format)
     ilastik_parser.add_argument("--output_filename_format", type=str, default=default_output_filename_format)
+    ilastik_parser.add_argument("--output_internal_path", type=str, default=default_export_key())
     format_args, ilastik_args = ilastik_parser.parse_known_args(ilastik_args)
     output_formats = [default_output_format] * (n-1) + [format_args.output_format]
     output_filename_formats = [default_output_filename_format] * (n-1) + [format_args.output_filename_format]
+    output_internal_paths = [default_export_key()] * (n-1) + [format_args.output_internal_path]
 
     # Reshape the data to tzyxc and move it to the cache folder.
     outfiles = []
@@ -185,6 +187,7 @@ def batch_predict(args, ilastik_args):
         rf_file = rf_files[i]
         output_format = output_formats[i]
         output_filename_format = output_filename_formats[i]
+        output_internal_path = output_internal_paths[i]
 
         filename_key = os.path.basename(args.files[0])
         filename_path = args.files[0][:-len(filename_key)-1]
@@ -198,17 +201,19 @@ def batch_predict(args, ilastik_args):
                "--headless",
                "--project=%s" % rf_file,
                "--output_format=%s" % output_format,
-               "--output_filename_format=%s" % output_filename_format]
+               "--output_filename_format=%s" % output_filename_format,
+               "--output_internal_path=%s" % output_internal_path]
         cmd += args.files
         print col.Fore.GREEN + "- Running autocontext batch prediction round %d of %d -" % (i+1, n) + col.Fore.RESET
         subprocess.call(cmd, stdout=sys.stdout)
 
-        # Merge the probabilities back to the original file.
-        for filename, filename_out in zip(args.files, outfiles):
-            filename_key = os.path.basename(filename)
-            filename_path = filename[:-len(filename_key)-1]
-            merge_datasets(filename_path, filename_key, filename_out, default_export_key(), n=keep_channels,
-                           compression=args.compression)
+        if i < n-1:
+            # Merge the probabilities back to the original file.
+            for filename, filename_out in zip(args.files, outfiles):
+                filename_key = os.path.basename(filename)
+                filename_path = filename[:-len(filename_key)-1]
+                merge_datasets(filename_path, filename_key, filename_out, output_internal_path, n=keep_channels,
+                               compression=args.compression)
 
 
 def train(args):
@@ -308,7 +313,6 @@ def process_command_line():
         ilastik_parser = argparse.ArgumentParser()
         ilastik_parser.add_argument("--headless", action="store_true")
         ilastik_parser.add_argument("--project", type=str)
-        ilastik_parser.add_argument("--output_internal_path", type=str)
         ilastik_args = ilastik_parser.parse_known_args(ilastik_args)[1]
 
     return args, ilastik_args
