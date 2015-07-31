@@ -250,9 +250,15 @@ def process_command_line():
     parser = argparse.ArgumentParser(description="ilastik autocontext",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    # Ilastik arguments.
+    # General arguments.
     parser.add_argument("--ilastik", type=str, required=True,
                         help="path to the file run_ilastik.sh")
+    parser.add_argument("--predict_file", action="store_true",
+                        help="add this flag if ilastik supports the --predict_file option")
+    parser.add_argument("-c", "--cache", type=str, default="cache",
+                        help="name of the cache folder")
+    parser.add_argument("--compression", default="lzf", type=str, choices=["lzf", "gzip", "szip", "None"],
+                        help="compression filter for the hdf5 files")
 
     # Training arguments.
     parser.add_argument("--train", type=str,
@@ -263,14 +269,8 @@ def process_command_line():
                         help="number of autocontext loop iterations")
     parser.add_argument("-d", "--labeldataset", type=int, default=-1,
                         help="id of dataset in the ilp file that contains the labels (-1: use all datasets)")
-    parser.add_argument("-c", "--cache", type=str, default="cache",
-                        help="name of the cache folder")
     parser.add_argument("--seed", type=int, default=None,
                         help="the random seed")
-    parser.add_argument("--predict_file", action="store_true",
-                        help="add this flag if ilastik supports the --predict_file option")
-    parser.add_argument("--compression", default="lzf", type=str, choices=["lzf", "gzip", "szip", "None"],
-                        help="compression filter for the hdf5 files")
 
     # Batch prediction arguments.
     parser.add_argument("--batch_predict", type=str,
