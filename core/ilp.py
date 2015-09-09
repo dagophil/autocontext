@@ -337,7 +337,7 @@ class ILP(object):
         """
         h5_key = const.filepath(data_nr)
         data_path = vigra.readHDF5(self.project_filename, h5_key)
-        if ".h5/" in data_path.lower():
+        if ".h5/" in data_path.lower() or ".hdf5/" in data_path.lower():
             return "hdf5"
         elif data_path[-4:].lower() == ".tif" or data_path[-5:].lower() == ".tiff":
             return "tiff"

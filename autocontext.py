@@ -152,7 +152,7 @@ def batch_predict(args, ilastik_args):
     for i in xrange(len(args.files)):
         # Read the data and attach axistags.
         filename = args.files[i]
-        if ".h5/" in filename:
+        if ".h5/" in filename or ".hdf5/" in filename:
             data_key = os.path.basename(filename)
             data_path = filename[:-len(data_key)-1]
             data = vigra.readHDF5(data_path, data_key)
@@ -332,10 +332,15 @@ def process_command_line():
         args.files = []
         for filename in expanded_files:
             if "*" in filename:
-                if ".h5/" in filename:
-                    i = filename.index(".h5")
-                    filename_path = filename[:i+3]
-                    filename_key = filename[i+4:]
+                if ".h5/" in filename or ".hdf5/" in filename:
+                    if ".h5/" in filename:
+                        i = filename.index(".h5")
+                        filename_path = filename[:i+3]
+                        filename_key = filename[i+4:]
+                    else:
+                        i = filename.index(".hdf5")
+                        filename_path = filename[:i+5]
+                        filename_key = filename[i+6:]
                     to_append = glob.glob(filename_path)
                     to_append = [f + "/" + filename_key for f in to_append]
                     args.files += to_append
