@@ -390,7 +390,7 @@ class ILP(object):
         """
         cache_path = self.get_cache_data_path(data_nr)
         path, ext = os.path.splitext(cache_path)
-        return path + "_probs" + ext
+        return path + "_probs.h5"
 
     def get_channel_count(self, data_nr):
         """Returns the number of channels of the dataset.
