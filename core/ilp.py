@@ -352,7 +352,7 @@ class ILP(object):
         :param data_nr: number of dataset
         :return: the dataset
         """
-        if self._datatype(data_nr) == "hdf5":
+        if self._datatype(data_nr) == "hdf5" or self.is_internal(data_nr):
             return vigra.readHDF5(self.get_data_path(data_nr), self.get_data_key(data_nr))
         else:
             return vigra.readImage(self.get_data_path(data_nr))
