@@ -27,12 +27,20 @@ def datasetid(lane_number):
     return "/".join(datasetid_list(lane_number))
 
 
-def localdata_list(dataset_id):
+def localdata_list():
+    return ["Input Data", "local_data"]
+
+
+def localdata():
+    return "/".join(localdata_list())
+
+
+def localdataset_list(dataset_id):
     return ["Input Data", "local_data", dataset_id]
 
 
-def localdata(dataset_id):
-    return "/".join(localdata_list(dataset_id))
+def localdataset(dataset_id):
+    return "/".join(localdataset_list(dataset_id))
 
 
 def axisorder_list(lane_number):

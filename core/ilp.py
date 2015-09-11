@@ -242,7 +242,7 @@ class ILP(object):
         """
         if self.is_internal(data_nr):
             dataset_id = self.get_dataset_id(data_nr)
-            data_key = const.localdata(dataset_id)
+            data_key = const.localdataset(dataset_id)
         else:
             if self._datatype(data_nr) != "hdf5":
                 return const.default_export_key()
@@ -303,7 +303,7 @@ class ILP(object):
         :rtype: str
         """
         dataset_id = self.get_dataset_id(data_nr)
-        h5_key = const.localdata(dataset_id)
+        h5_key = const.localdataset(dataset_id)
         return h5_key
 
     def is_internal(self, data_nr):
@@ -531,6 +531,15 @@ class ILP(object):
                 del_from_h5(proj, const.label_blocks_list(data_nr, i))
             proj.close()
 
+    def remove_internal_data(self):
+        """Remove the internal data from the project.
+        """
+        proj = h5py.File(self.project_filename, "r+")
+        local_data = eval_h5(proj, const.localdata_list())
+        for s in local_data:
+            del local_data[s]
+        proj.close()
+
     @property
     def label_names(self):
         """Returns the names of the labels of the dataset.
@@ -719,11 +728,12 @@ class ILP(object):
         h5key_out = const.default_export_key()
         merge_datasets(filepath, h5key, filepath_out, h5key_out, n=n, compression=self._compression)
 
-    def save(self, filename, remove_labels=False):
+    def save(self, filename, remove_labels=False, remove_internal_data=False):
         """Save the project to the given file and adjust the relative filepaths in the copy.
 
         :param filename: the filename
         :param remove_labels: if True, the stored labels are removed from the copy
+        :param remove_internal_data: if True, the internal data is removed from the copy
         """
         # Copy the project.
         shutil.copyfile(self.project_filename, filename)
@@ -738,3 +748,7 @@ class ILP(object):
         # Remove the labels.
         if remove_labels:
             p.remove_labels()
+
+        # Remove the internal data.
+        if remove_internal_data:
+            p.remove_internal_data()

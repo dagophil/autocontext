@@ -85,7 +85,7 @@ def autocontext(ilastik_cmd, project, runs, label_data_nr, weights=None, predict
         filename = "rf_" + str(i).zfill(len(str(runs-1))) + ".ilp"
         filename = os.path.join(project.cache_folder, filename)
         print col.Fore.GREEN + "Saving the project to " + filename + col.Fore.RESET
-        project.save(filename, remove_labels=True)
+        project.save(filename, remove_labels=True, remove_internal_data=True)
 
         # Predict all datasets.
         print col.Fore.GREEN + "Predicting all datasets:" + col.Fore.RESET
