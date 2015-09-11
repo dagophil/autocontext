@@ -195,7 +195,8 @@ def batch_predict(args, ilastik_args):
 
         # Quick hack to prevent the ilastik error "wrong number of channels".
         p = ILP(rf_file, args.cache, compression=args.compression)
-        p.set_data_path_key(0, filename_path, filename_key)
+        for j in xrange(p.data_count):
+            p.set_data_path_key(j, filename_path, filename_key)
 
         # Call ilastik to run the batch prediction.
         cmd = [args.ilastik,
