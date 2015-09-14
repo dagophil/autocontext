@@ -143,7 +143,10 @@ def batch_predict(args, ilastik_args):
     ilastik_parser.add_argument("--output_internal_path", type=str, default=default_export_key())
     format_args, ilastik_args = ilastik_parser.parse_known_args(ilastik_args)
     output_formats = [default_output_format] * (n-1) + [format_args.output_format]
-    output_filename_formats = [default_output_filename_format] * (n-1) + [format_args.output_filename_format]
+    if args.no_overwrite:
+        output_filename_formats = [default_output_filename_format[:-3] + "_%s" % str(i).zfill(2) + default_output_filename_format[-3:] for i in xrange(n-1)] + [format_args.output_filename_format]
+    else:
+        output_filename_formats = [default_output_filename_format] * (n-1) + [format_args.output_filename_format]
     output_internal_paths = [default_export_key()] * (n-1) + [format_args.output_internal_path]
 
     # Reshape the data to tzyxc and move it to the cache folder.
@@ -180,7 +183,10 @@ def batch_predict(args, ilastik_args):
         output_filename = os.path.join(args.cache, output_filename)
         vigra.writeHDF5(new_data, output_filename, data_key, compression=args.compression)
         args.files[i] = output_filename + "/" + data_key
-        outfiles.append(os.path.splitext(output_filename)[0] + "_probs.h5")
+        if args.no_overwrite:
+            outfiles.append([os.path.splitext(output_filename)[0] + "_probs_%s.h5" % str(i).zfill(2) for i in xrange(n-1)])
+        else:
+            outfiles.append([os.path.splitext(output_filename)[0] + "_probs.h5"] * (n-1))
     assert keep_channels > 0
 
     # Run the batch prediction.
@@ -223,7 +229,7 @@ def batch_predict(args, ilastik_args):
             for filename, filename_out in zip(args.files, outfiles):
                 filename_key = os.path.basename(filename)
                 filename_path = filename[:-len(filename_key)-1]
-                merge_datasets(filename_path, filename_key, filename_out, output_internal_path, n=keep_channels,
+                merge_datasets(filename_path, filename_key, filename_out[i], output_internal_path, n=keep_channels,
                                compression=args.compression)
 
 
@@ -280,6 +286,8 @@ def process_command_line():
                              "prediction")
     parser.add_argument("--files", type=str, nargs="+",
                         help="the files for the batch prediction")
+    parser.add_argument("--no_overwrite", action="store_true",
+                        help="create one _probs file for each autocontext iteration in the batch prediction")
 
     # Do the parsing.
     args, ilastik_args = parser.parse_known_args()
