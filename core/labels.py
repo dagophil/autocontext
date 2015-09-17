@@ -69,7 +69,7 @@ def scatter_labels(label_blocks, label_count, n, weights=None):
         raise Exception("The number of weights is smaller than the number of layers.")
 
     # Scatter the labels in each block.
-    return_list = [[] for __ in range(n)]
+    return_list = [[] for _ in range(n)]
     for block in label_blocks:
         scatter_blocks = scatter_labels_single_block(block, label_count, n, weights)
         for i, b in enumerate(scatter_blocks):

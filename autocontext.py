@@ -248,7 +248,7 @@ def train(args):
     proj = ILP(args.outfile, args.cache, args.compression)
 
     # Do the autocontext loop.
-    autocontext(args.ilastik, proj, args.nloops, args.labeldataset, predict_file=args.predict_file)
+    autocontext(args.ilastik, proj, args.nloops, args.labeldataset, weights=args.weights, predict_file=args.predict_file)
 
 
 def process_command_line():
@@ -279,6 +279,8 @@ def process_command_line():
                         help="id of dataset in the ilp file that contains the labels (-1: use all datasets)")
     parser.add_argument("--seed", type=int, default=None,
                         help="the random seed")
+    parser.add_argument("--weights", type=float, nargs="*", default=[],
+                        help="amount of labels that are used in each round")
 
     # Batch prediction arguments.
     parser.add_argument("--batch_predict", type=str,
@@ -326,6 +328,10 @@ def process_command_line():
             raise Exception("Wrong id of label dataset: %d" % args.d)
         if args.compression == "None":
             args.compression = None
+        if len(args.weights) == 0:
+            args.weights = None
+        if args.weights is not None and len(args.weights) != args.nloops:
+            raise Exception("Number of weights must be equal to number of autocontext iterations.")
 
     # Check if the batch prediction arguments are valid.
     if args.batch_predict:
