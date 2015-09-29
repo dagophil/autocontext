@@ -42,7 +42,8 @@ def scatter_labels_single_block(label_block, label_count, n, weights=None):
             chosen_indices = random.sample(available_indices, num_samples)
 
             # Remove the chosen indices from the available indices.
-            available_list[i] = [x for x in available_indices if x not in chosen_indices]
+            available_list[i] = list(numpy.delete(available_indices, chosen_indices))
+            # available_list[i] = [x for x in available_indices if x not in chosen_indices]
 
             # Take the coordinates of the chosen indices in the block and put the current label there.
             wh = tuple(w[chosen_indices] for w in wh_list[i])
