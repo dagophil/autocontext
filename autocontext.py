@@ -267,6 +267,10 @@ def process_command_line():
                         help="name of the cache folder")
     parser.add_argument("--compression", default="lzf", type=str, choices=["lzf", "gzip", "szip", "None"],
                         help="compression filter for the hdf5 files")
+    parser.add_argument("--clear_cache", action="store_true",
+                        help="clear the cache folder without asking")
+    parser.add_argument("--keep_cache", action="store_true",
+                        help="keep the cache folder without asking")
 
     # Training arguments.
     parser.add_argument("--train", type=str,
@@ -306,6 +310,10 @@ def process_command_line():
     # Check if ilastik is an executable.
     if not os.path.isfile(args.ilastik) or not os.access(args.ilastik, os.X_OK):
         raise Exception("%s is not an executable file." % args.ilastik)
+
+    # Check that only one of the options --clear_cache, --keep_cache was set.
+    if args.clear_cache and args.keep_cache:
+        raise Exception("--clear_cache and --keep_cache must not be combined.")
 
     # Check for conflicts between training and batch prediction arguments.
     if args.train is None and args.batch_predict is None:
@@ -387,8 +395,18 @@ def main():
     # Clear the cache folder.
     if os.path.isdir(args.cache):
         print "The cache folder", os.path.abspath(args.cache), "already exists."
-        clear_cache = raw_input("Clear cache folder? [y|n] : ")
-        if clear_cache in ["y", "Y"]:
+        clear_cache = False
+        if args.clear_cache:
+            print "The option --clear_cache was set, so the cache folder will be cleared."
+            clear_cache = True
+        elif args.keep_cache:
+            print "The option --keep_cache was set, so the cache folder will not be cleared."
+        else:
+            cc_input = raw_input("Clear cache folder? [y|n] : ")
+            if cc_input in ["y", "Y"]:
+                clear_cache = True
+
+        if clear_cache:
             for f in os.listdir(args.cache):
                 f_path = os.path.join(args.cache, f)
                 try:
